@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 import { logger } from "../utils/logger.js"
 
 // Map QuestionnaireResponse to FHIR resources

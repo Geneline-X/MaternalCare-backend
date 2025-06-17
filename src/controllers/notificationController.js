@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 
 // Get notifications for user
 export const getNotifications = async (req, res, next) => {

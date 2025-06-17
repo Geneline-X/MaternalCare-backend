@@ -732,6 +732,4 @@ class FhirStore {
 }
 
 // Create singleton instance
-const fhirStore = new FhirStore()
-
-export default fhirStore
+export const fhirStore = new FhirStore()

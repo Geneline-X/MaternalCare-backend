@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 
 // Get all communications
 export const getCommunications = async (req, res, next) => {

@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 import { validateQuestionnaireResponse } from "../services/fhirService.js"
 import { sendNotification } from "../services/notificationService.js"
 import { logger } from "../utils/logger.js"

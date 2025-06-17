@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 
 // Get all patients
 export const getPatients = async (req, res, next) => {

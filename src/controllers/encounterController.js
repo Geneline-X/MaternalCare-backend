@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 import { sendNotification } from "../services/notificationService.js"
 
 // Get all encounters

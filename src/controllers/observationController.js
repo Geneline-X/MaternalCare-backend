@@ -1,4 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 import { checkHighRiskConditions } from "../services/flagService.js"
 import { sendNotification } from "../services/notificationService.js"
 

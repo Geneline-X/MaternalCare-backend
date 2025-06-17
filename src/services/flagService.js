@@ -1,5 +1,4 @@
-import fhirStore from "../models/fhirStore.js"
-
+import { fhirStore } from "../models/FhirStore.js"
 // Check for high-risk conditions in resources
 export const checkHighRiskConditions = async (resources) => {
   try {

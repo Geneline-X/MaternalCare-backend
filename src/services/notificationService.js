@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer"
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 
 // Create nodemailer transporter
 const transporter = nodemailer.createTransport({

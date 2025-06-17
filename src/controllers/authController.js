@@ -1,5 +1,5 @@
 import userService from "../services/userService.js"
-import fhirStore from "../models/fhirStore.js"
+import { fhirStore } from "../models/FhirStore.js"
 import { Webhook } from "svix"
 
 /**
