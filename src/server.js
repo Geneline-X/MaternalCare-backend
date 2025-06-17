@@ -26,7 +26,7 @@ app.use(helmet())
 // Configure CORS
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL, "http://localhost:3000", "http://localhost:5500"],
+    origin: "*",
     credentials: true,
   }),
 )
