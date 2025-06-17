@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+
+# Logs
+*.log
+npm-debug.log
+yarn-error.log
+
+bun.lock
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.sublime-*
+.DS_Store
+
+# Testing
+coverage/
+test-results/
+
+# OS-specific
+Thumbs.db
+desktop.ini
+
+# Cache
+.parcel-cache/
+.eslintcache

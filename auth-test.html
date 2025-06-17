@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PreSTrack - API Testing Dashboard</title>
+
+  <!-- Clerk configuration -->
+  <script>
+    window.__clerk_frontend_api = "https://growing-airedale-28.clerk.accounts.dev";
+    window.__clerk_publishable_key = "pk_test_Z3Jvd2luZy1haXJlZGFsZS0yOC5jbGVyay5hY2NvdW50cy5kZXYk";
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" crossorigin="anonymous"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      font-weight: 300;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+    }
+
+    .card h2 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card h3 {
+      font-size: 1.3rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: #4b5563;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 0.5rem;
+    }
+
+    .card h4 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin: 1.5rem 0 0.75rem 0;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin: 0.25rem;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+      box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+
+    .status {
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status.success { 
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+      color: #065f46; 
+      border-left: 4px solid #10b981;
+    }
+
+    .status.error { 
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
+      color: #991b1b; 
+      border-left: 4px solid #ef4444;
+    }
+
+    .status.info { 
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); 
+      color: #1e40af; 
+      border-left: 4px solid #3b82f6;
+    }
+
+    .status.warning { 
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+      color: #92400e; 
+      border-left: 4px solid #f59e0b;
+    }
+
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 1.5rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-size: 0.875rem;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #374151;
+      position: relative;
+    }
+
+    .endpoint-group {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: rgba(249, 250, 251, 0.5);
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .token-container {
+      position: relative;
+      margin-top: 1rem;
+    }
+
+    .token-container .btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+    }
+
+    .user-info {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      background: rgba(249, 250, 251, 0.8);
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .user-info strong {
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e5e7eb;
+      margin-bottom: 2rem;
+      background: rgba(249, 250, 251, 0.5);
+      border-radius: 12px 12px 0 0;
+      overflow: hidden;
+    }
+
+    .tab {
+      padding: 1rem 2rem;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab:hover {
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    .tab.active {
+      border-bottom: 3px solid #667eea;
+      background: rgba(102, 126, 234, 0.1);
+      color: #667eea;
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .form-group input, 
+    .form-group textarea, 
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-group input:focus, 
+    .form-group textarea:focus, 
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .test-result {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .test-result h4 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .test-result.success {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      border-color: #10b981;
+    }
+
+    .test-result.error {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      border-color: #ef4444;
+    }
+
+    .test-history {
+      margin-top: 1.5rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .test-history-item {
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.875rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background-color 0.2s ease;
+    }
+
+    .test-history-item:hover {
+      background-color: rgba(249, 250, 251, 0.8);
+    }
+
+    .test-history-item:last-child {
+      border-bottom: none;
+    }
+
+    .test-history-item .timestamp {
+      color: #6b7280;
+      font-size: 0.75rem;
+    }
+
+    .test-history-item .endpoint {
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .test-history-item .method {
+      background: #667eea;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .test-history-item .status-code {
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .test-history-item .status-code.success {
+      background: #10b981;
+      color: white;
+    }
+
+    .test-history-item .status-code.error {
+      background: #ef4444;
+      color: white;
+    }
+
+    .config-section {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid #e5e7eb;
+    }
+
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-card .label {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    .loading {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e5e7eb;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .role-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .rest-example {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .rest-example h5 {
+      color: #059669;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .user-info {
+        grid-template-columns: 1fr;
+      }
+      
+      .config-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .button-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .tabs {
+        flex-direction: column;
+      }
+    }
+
+    .auth-container {
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .response-container {
+      position: relative;
+    }
+
+    .copy-response {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(255, 255, 255, 0.9);
+      color: #374151;
+      border: 1px solid #d1d5db;
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1><i class="fas fa-stethoscope"></i> PreSTrack API Testing Dashboard</h1>
+      <p>Comprehensive testing interface for authentication and API endpoints</p>
+    </header>
+
+    <!-- Authentication Card -->
+    <div class="card">
+      <h2><i class="fas fa-shield-alt"></i> Authentication</h2>
+      
+      <div id="auth-loading" class="loading">
+        <div class="spinner"></div>
+        Initializing Clerk authentication...
+      </div>
+      
+      <div id="auth-container" class="hidden auth-container"></div>
+      
+      <div id="user-container" class="hidden">
+        <div class="status success" id="auth-success">
+          <i class="fas fa-check-circle"></i>
+          Authentication successful!
+        </div>
+        
+        <div class="user-info">
+          <strong>Name:</strong> <span id="user-name">-</span>
+          <strong>Email:</strong> <span id="user-email">-</span>
+          <strong>User ID:</strong> <span id="user-id">-</span>
+          <strong>Role:</strong> <span id="user-role" class="role-badge">-</span>
+        </div>
+        
+        <h3><i class="fas fa-key"></i> Session Token</h3>
+        <div class="token-container">
+          <pre id="user-token">-</pre>
+          <button id="copy-token" class="btn btn-secondary">
+            <i class="fas fa-copy"></i> Copy
+          </button>
+        </div>
+        
+        <div style="margin-top: 1.5rem;">
+          <button id="sign-out-button" class="btn btn-danger">
+            <i class="fas fa-sign-out-alt"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistics Card -->
+    <div class="card">
+      <h2><i class="fas fa-chart-bar"></i> Testing Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="total-tests">0</div>
+          <div class="label">Total Tests</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="successful-tests">0</div>
+          <div class="label">Successful</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="failed-tests">0</div>
+          <div class="label">Failed</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="success-rate">0%</div>
+          <div class="label">Success Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Testing Console -->
+    <div class="card">
+      <h2><i class="fas fa-terminal"></i> API Testing Console</h2>
+      <div id="api-status" class="status info">
+        <i class="fas fa-info-circle"></i>
+        Sign in to test protected endpoints.
+      </div>
+      
+      <div class="tabs">
+        <div class="tab active" data-tab="quick-tests">
+          <i class="fas fa-bolt"></i> Quick Tests
+        </div>
+        <div class="tab" data-tab="rest-examples">
+          <i class="fas fa-code"></i> REST Examples
+        </div>
+        <div class="tab" data-tab="custom-request">
+          <i class="fas fa-cogs"></i> Custom Request
+        </div>
+        <div class="tab" data-tab="test-history">
+          <i class="fas fa-history"></i> Test History
+        </div>
+      </div>
+      
+      <div class="tab-content active" id="quick-tests">
+        <div class="endpoint-group">
+          <h3><i class="fas fa-shield-alt"></i> Authentication Endpoints</h3>
+          <div class="button-grid">
+            <button id="test-auth-status" class="btn">
+              <i class="fas fa-heartbeat"></i> Test Auth Status
+            </button>
+            <button id="test-current-user" class="btn" disabled>
+              <i class="fas fa-user"></i> Test Current User
+            </button>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3><i class="fas fa-database"></i> FHIR Resource Endpoints</h3>
+          
+          <h4><i class="fas fa-user-injured"></i> Patient Management</h4>
+          <div class="button-grid">
+            <button id="test-patients-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Patients
+            </button>
+            <button id="test-patient-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Patient (REST)
+            </button>
+            <button id="test-patient-update" class="btn" disabled>
+              <i class="fas fa-edit"></i> Update Patient (REST)
+            </button>
+            <button id="test-patient-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Patient
+            </button>
+          </div>
+
+          <h4><i class="fas fa-calendar-alt"></i> Appointment Management</h4>
+          <div class="button-grid">
+            <button id="test-appointments-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Appointments
+            </button>
+            <button id="test-appointment-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Appointment (REST)
+            </button>
+            <button id="test-appointment-update" class="btn" disabled>
+              <i class="fas fa-edit"></i> Update Appointment
+            </button>
+            <button id="test-appointment-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Appointment
+            </button>
+          </div>
+
+          <h4><i class="fas fa-chart-line"></i> Health Data (Observations)</h4>
+          <div class="button-grid">
+            <button id="test-observations-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Observations
+            </button>
+            <button id="test-observation-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Observation (REST)
+            </button>
+            <button id="test-observation-high-risk" class="btn" disabled>
+              <i class="fas fa-exclamation-triangle"></i> Create High-Risk Data
+            </button>
+            <button id="test-observation-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Observation
+            </button>
+          </div>
+
+          <h4><i class="fas fa-clipboard-list"></i> Forms & Questionnaires</h4>
+          <div class="button-grid">
+            <button id="test-questionnaires-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Questionnaires
+            </button>
+            <button id="test-questionnaire-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Questionnaire (REST)
+            </button>
+            <button id="test-questionnaire-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Questionnaire
+            </button>
+          </div>
+
+          <h4><i class="fas fa-clipboard-check"></i> Questionnaire Responses</h4>
+          <div class="button-grid">
+            <button id="test-questionnaire-responses-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Responses
+            </button>
+            <button id="test-questionnaire-response-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Submit Response (REST)
+            </button>
+            <button id="test-questionnaire-response-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Response
+            </button>
+          </div>
+
+          <h4><i class="fas fa-flag"></i> Flags & Alerts</h4>
+          <div class="button-grid">
+            <button id="test-flags-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Flags
+            </button>
+            <button id="test-flag-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Flag (REST)
+            </button>
+            <button id="test-flag-update" class="btn" disabled>
+              <i class="fas fa-edit"></i> Update Flag
+            </button>
+            <button id="test-flag-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Flag
+            </button>
+          </div>
+
+          <h4><i class="fas fa-comments"></i> Communications</h4>
+          <div class="button-grid">
+            <button id="test-communications-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Communications
+            </button>
+            <button id="test-communication-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Send Message (REST)
+            </button>
+            <button id="test-communication-update" class="btn" disabled>
+              <i class="fas fa-edit"></i> Update Communication
+            </button>
+            <button id="test-communication-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Communication
+            </button>
+          </div>
+
+          <h4><i class="fas fa-tasks"></i> Care Plans</h4>
+          <div class="button-grid">
+            <button id="test-careplans-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Care Plans
+            </button>
+            <button id="test-careplan-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Care Plan (REST)
+            </button>
+            <button id="test-careplan-update" class="btn" disabled>
+              <i class="fas fa-edit"></i> Update Care Plan
+            </button>
+            <button id="test-careplan-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Care Plan
+            </button>
+          </div>
+
+          <h4><i class="fas fa-calendar-check"></i> Encounters</h4>
+          <div class="button-grid">
+            <button id="test-encounters-get" class="btn" disabled>
+              <i class="fas fa-list"></i> Get Encounters
+            </button>
+            <button id="test-encounter-create" class="btn" disabled>
+              <i class="fas fa-plus"></i> Create Encounter (REST)
+            </button>
+            <button id="test-encounter-update" class="btn" disabled>
+              <i class="fas fa-edit"></i> Update Encounter
+            </button>
+            <button id="test-encounter-delete" class="btn" disabled>
+              <i class="fas fa-trash"></i> Delete Encounter
+            </button>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3><i class="fas fa-sms"></i> SMS Endpoints</h3>
+          <div class="button-grid">
+            <button id="test-sms-outbound" class="btn" disabled>
+              <i class="fas fa-paper-plane"></i> Send SMS
+            </button>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3><i class="fas fa-chart-pie"></i> Analytics Endpoints</h3>
+          <div class="button-grid">
+            <button id="test-analytics-pregnancy" class="btn" disabled>
+              <i class="fas fa-baby"></i> Pregnancy Analytics
+            </button>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3><i class="fas fa-cog"></i> System Endpoints</h3>
+          <div class="button-grid">
+            <button id="test-health" class="btn btn-success">
+              <i class="fas fa-heart"></i> Health Check
+            </button>
+            <button id="test-root" class="btn btn-success">
+              <i class="fas fa-home"></i> API Root
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="rest-examples">
+        <div class="endpoint-group">
+          <h3><i class="fas fa-code"></i> REST API Examples</h3>
+          <p>These examples show the REST format you can send to FHIR endpoints. The server automatically transforms them to FHIR format.</p>
+          
+          <h4><i class="fas fa-user-injured"></i> Create Patient (REST Format)</h4>
+          <div class="rest-example">
+            <h5>POST /api/fhir/Patient</h5>
+            <pre>{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "phone": "+1234567890",
+  "email": "jane.doe@example.com",
+  "birthDate": "1990-05-15",
+  "gender": "female",
+  "address": {
+    "street": "123 Main St",
+    "city": "New York",
+    "state": "NY",
+    "postalCode": "10001"
+  }
+}</pre>
+          </div>
+
+          <h4><i class="fas fa-calendar-alt"></i> Create Appointment (REST Format)</h4>
+          <div class="rest-example">
+            <h5>POST /api/fhir/Appointment</h5>
+            <pre>{
+  "patientId": "patient-123",
+  "doctorId": "doc-456",
+  "date": "2024-02-15",
+  "time": "10:00",
+  "duration": 30,
+  "type": "checkup",
+  "status": "booked",
+  "location": "Room 101",
+  "notes": "Regular prenatal checkup"
+}</pre>
+          </div>
+
+          <h4><i class="fas fa-chart-line"></i> Create Health Observation (REST Format)</h4>
+          <div class="rest-example">
+            <h5>POST /api/fhir/Observation</h5>
+            <pre>{
+  "patientId": "patient-123",
+  "name": "Blood Pressure",
+  "code": "85354-9",
+  "value": 145,
+  "unit": "mmHg",
+  "date": "2024-01-15T10:00:00Z",
+  "status": "final",
+  "notes": "Slightly elevated reading"
+}</pre>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tab-content" id="custom-request">
+        <div class="form-group">
+          <label for="request-method"><i class="fas fa-cog"></i> Method</label>
+          <select id="request-method">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="request-url"><i class="fas fa-link"></i> Endpoint URL</label>
+          <input type="text" id="request-url" placeholder="/api/fhir/Patient" />
+        </div>
+        
+        <div class="form-group" id="request-body-container">
+          <label for="request-body"><i class="fas fa-code"></i> Request Body (JSON)</label>
+          <textarea id="request-body" placeholder='{"firstName": "Jane", "lastName": "Doe", "phone": "+1234567890"}'></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="include-token" checked />
+            <i class="fas fa-key"></i> Include Authentication Token
+          </label>
+        </div>
+        
+        <button id="send-custom-request" class="btn">
+          <i class="fas fa-paper-plane"></i> Send Request
+        </button>
+      </div>
+      
+      <div class="tab-content" id="test-history">
+        <div id="test-history-list" class="test-history">
+          <div class="test-history-item">
+            <span>No tests run yet.</span>
+          </div>
+        </div>
+      </div>
+      
+      <h3><i class="fas fa-terminal"></i> API Response:</h3>
+      <div class="response-container">
+        <pre id="api-response">No response yet. Click a button above to test an endpoint.</pre>
+        <button id="copy-response" class="copy-response btn btn-secondary">
+          <i class="fas fa-copy"></i> Copy
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuration -->
+    <div class="card">
+      <h2><i class="fas fa-cogs"></i> Configuration</h2>
+      <div class="config-section">
+        <div class="form-group">
+          <label for="api-base-url"><i class="fas fa-server"></i> API Base URL</label>
+          <input type="text" id="api-base-url" value="http://localhost:3000" />
+        </div>
+        <button id="save-config" class="btn btn-success">
+          <i class="fas fa-save"></i> Save Config
+        </button>
+        <button id="test-connection" class="btn btn-warning">
+          <i class="fas fa-wifi"></i> Test Connection
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    let API_BASE_URL = localStorage.getItem('apiBaseUrl') || "http://localhost:3000";
+    document.getElementById('api-base-url').value = API_BASE_URL;
+
+    // Statistics
+    let testStats = {
+      total: 0,
+      successful: 0,
+      failed: 0
+    };
+
+    // DOM Elements
+    const authLoading = document.getElementById('auth-loading');
+    const authContainer = document.getElementById('auth-container');
+    const userContainer = document.getElementById('user-container');
+    const userName = document.getElementById('user-name');
+    const userEmail = document.getElementById('user-email');
+    const userId = document.getElementById('user-id');
+    const userRole = document.getElementById('user-role');
+    const userToken = document.getElementById('user-token');
+    const copyTokenButton = document.getElementById('copy-token');
+    const signOutButton = document.getElementById('sign-out-button');
+    const apiStatus = document.getElementById('api-status');
+    const apiResponse = document.getElementById('api-response');
+    const testHistoryList = document.getElementById('test-history-list');
+    const requestMethod = document.getElementById('request-method');
+    const requestUrl = document.getElementById('request-url');
+    const requestBody = document.getElementById('request-body');
+    const requestBodyContainer = document.getElementById('request-body-container');
+    const includeToken = document.getElementById('include-token');
+    const saveConfigButton = document.getElementById('save-config');
+    const apiBaseUrlInput = document.getElementById('api-base-url');
+
+    // Statistics elements
+    const totalTestsEl = document.getElementById('total-tests');
+    const successfulTestsEl = document.getElementById('successful-tests');
+    const failedTestsEl = document.getElementById('failed-tests');
+    const successRateEl = document.getElementById('success-rate');
+
+    // Tab elements
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    let activeSession = null;
+    let testHistory = [];
+
+    // Initialize tabs
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Show/hide request body based on method
+    requestMethod.addEventListener('change', () => {
+      if (requestMethod.value === 'GET' || requestMethod.value === 'DELETE') {
+        requestBodyContainer.classList.add('hidden');
+      } else {
+        requestBodyContainer.classList.remove('hidden');
+      }
+    });
+
+    function updateStatistics() {
+      totalTestsEl.textContent = testStats.total;
+      successfulTestsEl.textContent = testStats.successful;
+      failedTestsEl.textContent = testStats.failed;
+      
+      const successRate = testStats.total > 0 ? 
+        Math.round((testStats.successful / testStats.total) * 100) : 0;
+      successRateEl.textContent = successRate + '%';
+    }
+
+    async function initializeClerk() {
+      try {
+        await Clerk.load();
+
+        const user = Clerk.user;
+        if (user) {
+          displayUserDetails(user);
+        } else {
+          authLoading.classList.add("hidden");
+          authContainer.classList.remove("hidden");
+          Clerk.mountSignIn(authContainer);
+        }
+
+        Clerk.addListener(({ user }) => {
+          if (user) {
+            displayUserDetails(user);
+          } else {
+            clearUserUI();
+          }
+        });
+      } catch (err) {
+        authLoading.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed to load Clerk authentication.';
+        console.error("Clerk initialization error:", err);
+      }
+    }
+
+    async function displayUserDetails(user) {
+      authLoading.classList.add("hidden");
+      authContainer.classList.add("hidden");
+      userContainer.classList.remove("hidden");
+
+      activeSession = await Clerk.session;
+      const token = await activeSession.getToken();
+
+      userName.textContent = user.fullName || "N/A";
+      userEmail.textContent = user.primaryEmailAddress?.emailAddress || "N/A";
+      userId.textContent = user.id;
+      userRole.textContent = user.publicMetadata?.role || user.unsafeMetadata?.role || "Unknown";
+      userToken.textContent = token;
+
+      // Enable protected endpoint buttons
+      const protectedButtons = document.querySelectorAll('.btn[disabled]');
+      protectedButtons.forEach(btn => {
+        if (btn.id !== 'test-health' && btn.id !== 'test-root') {
+          btn.disabled = false;
+        }
+      });
+
+      apiStatus.className = "status success";
+      apiStatus.innerHTML = '<i class="fas fa-check-circle"></i> Authenticated. You can now test protected endpoints.';
+    }
+
+    function clearUserUI() {
+      userContainer.classList.add("hidden");
+      authContainer.classList.remove("hidden");
+      Clerk.mountSignIn(authContainer);
+
+      // Disable protected endpoint buttons
+      const protectedButtons = document.querySelectorAll('.btn');
+      protectedButtons.forEach(btn => {
+        if (btn.id !== 'test-health' && btn.id !== 'test-root' && 
+            btn.id !== 'save-config' && btn.id !== 'test-connection' &&
+            btn.id !== 'test-auth-status') {
+          btn.disabled = true;
+        }
+      });
+
+      apiStatus.className = "status warning";
+      apiStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Not authenticated. Sign in to test protected endpoints.';
+    }
+
+    async function makeApiRequest(path, method = "GET", body = null, forceIncludeToken = false) {
+      apiStatus.className = "status info";
+      apiStatus.innerHTML = `<div class="loading"><div class="spinner"></div> Making request to ${path}...</div>`;
+      
+      // Update statistics
+      testStats.total++;
+      
+      try {
+        const headers = { "Content-Type": "application/json" };
+        let token = null;
+        
+        const shouldIncludeToken = forceIncludeToken || 
+                                  (activeSession && 
+                                   path !== "/health" && 
+                                   path !== "/");
+        
+        if (shouldIncludeToken) {
+          token = await activeSession.getToken();
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const options = { method, headers };
+        if (body && (method === 'POST' || method === 'PUT')) {
+          options.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+
+        const response = await fetch(`${API_BASE_URL}${path}`, options);
+        
+        let data;
+        const contentType = response.headers.get("content-type");
+        
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          data = { message: text || "No JSON response or empty response" };
+        }
+        
+        // Add to test history
+        addToTestHistory(path, method, response.status, response.ok);
+        
+        if (response.ok) {
+          testStats.successful++;
+          apiStatus.className = "status success";
+          apiStatus.innerHTML = `<i class="fas fa-check-circle"></i> Request to ${path} succeeded with status ${response.status}`;
+        } else {
+          testStats.failed++;
+          apiStatus.className = "status error";
+          apiStatus.innerHTML = `<i class="fas fa-times-circle"></i> Request to ${path} failed with status ${response.status}: ${data.message || 'Unknown error'}`;
+        }
+        
+        apiResponse.textContent = JSON.stringify(data, null, 2);
+        updateStatistics();
+        return { success: response.ok, status: response.status, data };
+      } catch (err) {
+        testStats.failed++;
+        console.error("API request error:", err);
+        apiStatus.className = "status error";
+        apiStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error making request: ${err.message}`;
+        apiResponse.textContent = "Error: " + err.message;
+        
+        addToTestHistory(path, method, 0, false, err.message);
+        updateStatistics();
+        
+        return { success: false, error: err.message };
+      }
+    }
+
+    function addToTestHistory(path, method, status, success, error = null) {
+      const timestamp = new Date().toLocaleTimeString();
+      const historyItem = {
+        timestamp,
+        path,
+        method,
+        status,
+        success,
+        error
+      };
+      
+      testHistory.unshift(historyItem);
+      if (testHistory.length > 50) {
+        testHistory.pop();
+      }
+      
+      updateTestHistoryUI();
+    }
+
+    function updateTestHistoryUI() {
+      if (testHistory.length === 0) {
+        testHistoryList.innerHTML = '<div class="test-history-item"><span>No tests run yet.</span></div>';
+        return;
+      }
+      
+      testHistoryList.innerHTML = '';
+      testHistory.forEach(item => {
+        const historyItemEl = document.createElement('div');
+        historyItemEl.className = 'test-history-item';
+        
+        const statusClass = item.success ? 'success' : 'error';
+        const statusText = item.error ? 'Error' : item.status;
+        
+        historyItemEl.innerHTML = `
+          <div>
+            <span class="timestamp">${item.timestamp}</span> - 
+            <span class="method">${item.method}</span> 
+            <span class="endpoint">${item.path}</span>
+          </div>
+          <span class="status-code ${statusClass}">${statusText}</span>
+        `;
+        
+        testHistoryList.appendChild(historyItemEl);
+      });
+    }
+
+    // Copy functionality
+    document.getElementById('copy-token').addEventListener('click', () => {
+      navigator.clipboard.writeText(userToken.textContent).then(() => {
+        const btn = document.getElementById('copy-token');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+        }, 2000);
+      });
+    });
+
+    document.getElementById('copy-response').addEventListener('click', () => {
+      navigator.clipboard.writeText(apiResponse.textContent).then(() => {
+        const btn = document.getElementById('copy-response');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+        }, 2000);
+      });
+    });
+
+    // Authentication endpoints
+    document.getElementById('test-auth-status').addEventListener('click', () => makeApiRequest('/api/auth/status'));
+    document.getElementById('test-current-user').addEventListener('click', () => makeApiRequest('/api/auth/me'));
+
+    // FHIR Patient endpoints
+    document.getElementById('test-patients-get').addEventListener('click', () => makeApiRequest('/api/fhir/Patient'));
+    document.getElementById('test-patient-create').addEventListener('click', () => makeApiRequest('/api/fhir/Patient', 'POST', {
+      firstName: 'Jane',
+      lastName: 'Doe',
+      phone: '+1234567890',
+      email: 'jane.doe@example.com',
+      birthDate: '1990-05-15',
+      gender: 'female'
+    }));
+    document.getElementById('test-patient-update').addEventListener('click', () => makeApiRequest('/api/fhir/Patient/patient-123', 'PUT', {
+      firstName: 'Jane',
+      lastName: 'Smith',
+      phone: '+1234567890',
+      email: 'jane.smith@example.com'
+    }));
+    document.getElementById('test-patient-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Patient/patient-123', 'DELETE'));
+
+    // FHIR Appointment endpoints
+    document.getElementById('test-appointments-get').addEventListener('click', () => makeApiRequest('/api/fhir/Appointment'));
+    document.getElementById('test-appointment-create').addEventListener('click', () => makeApiRequest('/api/fhir/Appointment', 'POST', {
+      patientId: 'patient-123',
+      doctorId: 'doc-456',
+      date: '2024-02-15',
+      time: '10:00',
+      duration: 30,
+      type: 'checkup',
+      status: 'booked'
+    }));
+    document.getElementById('test-appointment-update').addEventListener('click', () => makeApiRequest('/api/fhir/Appointment/appointment-123', 'PUT', {
+      status: 'confirmed'
+    }));
+    document.getElementById('test-appointment-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Appointment/appointment-123', 'DELETE'));
+
+    // FHIR Observation endpoints
+    document.getElementById('test-observations-get').addEventListener('click', () => makeApiRequest('/api/fhir/Observation'));
+    document.getElementById('test-observation-create').addEventListener('click', () => makeApiRequest('/api/fhir/Observation', 'POST', {
+      patientId: 'patient-123',
+      name: 'Blood Pressure',
+      code: '85354-9',
+      value: 120,
+      unit: 'mmHg',
+      date: new Date().toISOString(),
+      status: 'final'
+    }));
+    document.getElementById('test-observation-high-risk').addEventListener('click', () => makeApiRequest('/api/fhir/Observation', 'POST', {
+      patientId: 'patient-123',
+      name: 'Blood Pressure',
+      code: '85354-9',
+      value: 180,
+      unit: 'mmHg',
+      date: new Date().toISOString(),
+      status: 'final',
+      notes: 'High-risk reading - should trigger alert'
+    }));
+    document.getElementById('test-observation-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Observation/observation-123', 'DELETE'));
+
+    // FHIR Questionnaire endpoints
+    document.getElementById('test-questionnaires-get').addEventListener('click', () => makeApiRequest('/api/fhir/Questionnaire'));
+    document.getElementById('test-questionnaire-create').addEventListener('click', () => makeApiRequest('/api/fhir/Questionnaire', 'POST', {
+      title: 'Daily Health Check',
+      description: 'Track your daily health metrics',
+      status: 'active',
+      questions: [
+        {
+          id: 'q1',
+          text: 'How are you feeling today?',
+          type: 'select',
+          required: true,
+          options: [
+            {value: 'excellent', label: 'Excellent'},
+            {value: 'good', label: 'Good'},
+            {value: 'fair', label: 'Fair'},
+            {value: 'poor', label: 'Poor'}
+          ]
+        }
+      ]
+    }));
+    document.getElementById('test-questionnaire-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Questionnaire/questionnaire-123', 'DELETE'));
+
+    // FHIR QuestionnaireResponse endpoints
+    document.getElementById('test-questionnaire-responses-get').addEventListener('click', () => makeApiRequest('/api/fhir/QuestionnaireResponse'));
+    document.getElementById('test-questionnaire-response-create').addEventListener('click', () => makeApiRequest('/api/fhir/QuestionnaireResponse', 'POST', {
+      formId: 'questionnaire-123',
+      patientId: 'patient-123',
+      status: 'completed',
+      submittedAt: new Date().toISOString(),
+      answers: {
+        q1: 'good'
+      }
+    }));
+    document.getElementById('test-questionnaire-response-delete').addEventListener('click', () => makeApiRequest('/api/fhir/QuestionnaireResponse/response-123', 'DELETE'));
+
+    // FHIR Flag endpoints
+    document.getElementById('test-flags-get').addEventListener('click', () => makeApiRequest('/api/fhir/Flag'));
+    document.getElementById('test-flag-create').addEventListener('click', () => makeApiRequest('/api/fhir/Flag', 'POST', {
+      patientId: 'patient-123',
+      category: 'safety',
+      condition: 'High Blood Pressure',
+      description: 'Patient has consistently high BP readings',
+      status: 'active',
+      startDate: new Date().toISOString()
+    }));
+    document.getElementById('test-flag-update').addEventListener('click', () => makeApiRequest('/api/fhir/Flag/flag-123', 'PUT', {
+      status: 'inactive'
+    }));
+    document.getElementById('test-flag-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Flag/flag-123', 'DELETE'));
+
+    // FHIR Communication endpoints
+    document.getElementById('test-communications-get').addEventListener('click', () => makeApiRequest('/api/fhir/Communication'));
+    document.getElementById('test-communication-create').addEventListener('click', () => makeApiRequest('/api/fhir/Communication', 'POST', {
+      patientId: 'patient-123',
+      senderId: 'doc-456',
+      senderType: 'Practitioner',
+      message: 'Your test results are ready for review',
+      type: 'notification',
+      status: 'completed'
+    }));
+    document.getElementById('test-communication-update').addEventListener('click', () => makeApiRequest('/api/fhir/Communication/comm-123', 'PUT', {
+      status: 'completed'
+    }));
+    document.getElementById('test-communication-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Communication/comm-123', 'DELETE'));
+
+    // FHIR CarePlan endpoints
+    document.getElementById('test-careplans-get').addEventListener('click', () => makeApiRequest('/api/fhir/CarePlan'));
+    document.getElementById('test-careplan-create').addEventListener('click', () => makeApiRequest('/api/fhir/CarePlan', 'POST', {
+      patientId: 'patient-123',
+      title: 'Diabetes Management Plan',
+      description: 'Comprehensive diabetes care plan',
+      status: 'active',
+      startDate: new Date().toISOString(),
+      activities: [
+        {
+          description: 'Check blood sugar daily',
+          status: 'scheduled'
+        }
+      ]
+    }));
+    document.getElementById('test-careplan-update').addEventListener('click', () => makeApiRequest('/api/fhir/CarePlan/careplan-123', 'PUT', {
+      status: 'completed'
+    }));
+    document.getElementById('test-careplan-delete').addEventListener('click', () => makeApiRequest('/api/fhir/CarePlan/careplan-123', 'DELETE'));
+
+    // FHIR Encounter endpoints
+    document.getElementById('test-encounters-get').addEventListener('click', () => makeApiRequest('/api/fhir/Encounter'));
+    document.getElementById('test-encounter-create').addEventListener('click', () => makeApiRequest('/api/fhir/Encounter', 'POST', {
+      patientId: 'patient-123',
+      doctorId: 'doc-456',
+      type: 'AMB',
+      status: 'finished',
+      startTime: new Date().toISOString(),
+      endTime: new Date(Date.now() + 30*60*1000).toISOString(),
+      reason: 'Regular checkup'
+    }));
+    document.getElementById('test-encounter-update').addEventListener('click', () => makeApiRequest('/api/fhir/Encounter/encounter-123', 'PUT', {
+      status: 'finished'
+    }));
+    document.getElementById('test-encounter-delete').addEventListener('click', () => makeApiRequest('/api/fhir/Encounter/encounter-123', 'DELETE'));
+
+    // SMS endpoints
+    document.getElementById('test-sms-outbound').addEventListener('click', () => makeApiRequest('/api/sms/outbound', 'POST', {
+      to: '+1234567890',
+      message: 'Test SMS from PreSTrack API'
+    }));
+
+    // Analytics endpoints
+    document.getElementById('test-analytics-pregnancy').addEventListener('click', () => makeApiRequest('/api/analytics/pregnancy'));
+
+    // System endpoints
+    document.getElementById('test-health').addEventListener('click', () => makeApiRequest('/health'));
+    document.getElementById('test-root').addEventListener('click', () => makeApiRequest('/'));
+
+    // Custom request
+    document.getElementById('send-custom-request').addEventListener('click', async () => {
+      const method = requestMethod.value;
+      const url = requestUrl.value;
+      const body = requestBody.value.trim();
+      const shouldIncludeToken = includeToken.checked;
+      
+      if (!url) {
+        alert('Please enter an endpoint URL');
+        return;
+      }
+      
+      let requestBody = null;
+      if (body && (method === 'POST' || method === 'PUT')) {
+        try {
+          requestBody = JSON.parse(body);
+        } catch (err) {
+          alert('Invalid JSON in request body');
+          return;
+        }
+      }
+      
+      await makeApiRequest(url, method, requestBody, shouldIncludeToken);
+    });
+
+    // Configuration
+    document.getElementById('save-config').addEventListener('click', () => {
+      API_BASE_URL = apiBaseUrlInput.value;
+      localStorage.setItem('apiBaseUrl', API_BASE_URL);
+      
+      const btn = document.getElementById('save-config');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+      }, 2000);
+    });
+
+    document.getElementById('test-connection').addEventListener('click', async () => {
+      const testUrl = apiBaseUrlInput.value;
+      try {
+        const response = await fetch(`${testUrl}/health`);
+        if (response.ok) {
+          alert('✅ Connection successful!');
+        } else {
+          alert('❌ Connection failed: ' + response.status);
+        }
+      } catch (err) {
+        alert('❌ Connection failed: ' + err.message);
+      }
+    });
+
+    // Sign out
+    signOutButton.addEventListener('click', async () => {
+      await Clerk.signOut();
+      clearUserUI();
+    });
+
+    // Initialize
+    initializeClerk();
+    updateStatistics();
+  </script>
+</body>
+</html>
