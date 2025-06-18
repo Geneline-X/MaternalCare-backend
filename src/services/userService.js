@@ -10,19 +10,11 @@ class UserService {
    * Create or update user from Clerk data with better error handling
    */
   async createOrUpdateUser(clerkUser) {
-    // Log the raw incoming data for debugging
-    console.log('=== RAW CLERK WEBHOOK DATA ===');
-    console.log(JSON.stringify(clerkUser, null, 2));
-    console.log('==============================');
+    console.log('Processing Clerk user data:', JSON.stringify(clerkUser, null, 2));
     
     // Extract data from the webhook payload
     const data = clerkUser.data || clerkUser;
     const clerkId = data.id;
-    
-    if (!clerkId) {
-      console.error('No Clerk ID found in user data:', clerkUser);
-      throw new Error("No Clerk ID found for user");
-    }
     
     // Extract email from the email_addresses array
     let email = '';
@@ -33,33 +25,9 @@ class UserService {
       email = primaryEmail.email_address || '';
     }
     
-    // Extract name from unsafe_metadata (from client) or other locations
-    const unsafeMetadata = data.unsafe_metadata || data.unsafeMetadata || {};
-    
-    // Log the metadata structure for debugging
-    console.log('=== UNSAFE METADATA ===');
-    console.log(JSON.stringify(unsafeMetadata, null, 2));
-    console.log('======================');
-    
-    // Try different possible locations for first and last name
-    const firstName = unsafeMetadata.firstName || 
-                     data.first_name || 
-                     data.firstName || 
-                     '';
-    const lastName = unsafeMetadata.lastName || 
-                    data.last_name || 
-                    data.lastName || 
-                    '';
-    
+    // Extract name from unsafe_metadata or other locations
+    const unsafeMetadata = data.unsafe_metadata || {};
     const imageUrl = data.image_url || data.profile_image_url || '';
-    
-    // Log extracted values for debugging
-    console.log('=== EXTRACTED USER DATA ===');
-    console.log('First Name:', firstName);
-    console.log('Last Name:', lastName);
-    console.log('Email:', email);
-    console.log('Role:', unsafeMetadata.role);
-    console.log('===========================');
 
     if (!email) {
       console.error('No email found in Clerk user data. Available fields:', Object.keys(clerkUser));
@@ -82,9 +50,9 @@ class UserService {
       const userData = {
         clerkId,
         email,
-        name: [firstName, lastName].filter(Boolean).join(" ").trim(),
-        firstName,
-        lastName,
+        name: unsafeMetadata.firstName + " " + unsafeMetadata.lastName,
+        firstName: unsafeMetadata.firstName,
+        lastName: unsafeMetadata.lastName,
         picture: imageUrl,
         role,
         facilityId: unsafeMetadata.facilityId || null,
