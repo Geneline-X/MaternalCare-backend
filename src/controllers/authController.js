@@ -6,12 +6,15 @@ import { Webhook } from "svix"
  * Webhook handler for Clerk user events with signature verification
  */
 export const handleUserWebhook = async (req, res) => {
+  console.log('Webhook received. Headers:', JSON.stringify(req.headers, null, 2));
+  
   try {
     // Verify webhook signature
     const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
     if (!webhookSecret) {
-      console.error("CLERK_WEBHOOK_SECRET is not set")
-      return res.status(500).json({ error: "Webhook secret not configured" })
+      const error = "CLERK_WEBHOOK_SECRET is not set"
+      console.error(error)
+      return res.status(500).json({ error })
     }
 
     const svix_id = req.headers["svix-id"]
@@ -19,7 +22,13 @@ export const handleUserWebhook = async (req, res) => {
     const svix_signature = req.headers["svix-signature"]
 
     if (!svix_id || !svix_timestamp || !svix_signature) {
-      return res.status(400).json({ error: "Missing webhook headers" })
+      const error = `Missing webhook headers. Received: ${JSON.stringify({
+        svix_id: !!svix_id,
+        svix_timestamp: !!svix_timestamp,
+        svix_signature: !!svix_signature
+      })}`
+      console.error(error)
+      return res.status(400).json({ error })
     }
 
     // Verify the webhook
@@ -27,31 +36,63 @@ export const handleUserWebhook = async (req, res) => {
     let evt
 
     try {
-      evt = wh.verify(JSON.stringify(req.body), {
+      const rawBody = JSON.stringify(req.body)
+      console.log('Webhook raw body:', rawBody)
+      
+      evt = wh.verify(rawBody, {
         "svix-id": svix_id,
         "svix-timestamp": svix_timestamp,
         "svix-signature": svix_signature,
       })
     } catch (err) {
-      console.error("Webhook signature verification failed:", err)
-      return res.status(400).json({ error: "Invalid webhook signature" })
+      const error = `Webhook signature verification failed: ${err.message}`
+      console.error(error, {
+        headers: { svix_id, svix_timestamp },
+        error: err.stack
+      })
+      return res.status(400).json({ error })
     }
 
     const { type, data } = evt
-
-    console.log(`Received verified webhook event: ${type}`)
+    console.log(`Processing webhook event: ${type}`, { userId: data?.id })
 
     // Handle user creation/update events
     if (type === "user.created" || type === "user.updated") {
       try {
+        console.log('Processing user data:', JSON.stringify(data, null, 2))
         await userService.createOrUpdateUser(data)
         console.log(`Successfully processed ${type} for user ${data.id}`)
       } catch (error) {
-        console.error(`Error processing ${type}:`, error)
-        // Don't fail the webhook for non-critical errors
+        console.error(`Error processing ${type} for user ${data?.id || 'unknown'}:`, {
+          message: error.message,
+          stack: error.stack,
+          data: data
+        })
+        
         if (error.message.includes("duplicate key")) {
           console.log("User already exists, continuing...")
-        } else {
+        } else if (error.message.includes("No email address found for user")) {
+          // Handle case where email might be in a different format
+          console.log('Attempting to find email in alternative locations...')
+          const email = data?.email_addresses?.[0]?.email_address || 
+                      data?.primary_email_address_id || 
+                      data?.email_address
+          
+          if (email) {
+            console.log(`Found email in alternative location: ${email}`)
+            // Try again with modified data
+            const modifiedData = { ...data }
+            if (!modifiedData.emailAddresses && email) {
+              modifiedData.emailAddresses = [{ emailAddress: email }]
+            }
+            await userService.createOrUpdateUser(modifiedData)
+            console.log(`Successfully processed ${type} for user ${data.id} with modified data`)
+            return res.status(200).json({ received: true, processed: type, recovered: true })
+          }
+        }
+        
+        // Only throw if it's not a handled error
+        if (!error.message.includes("duplicate key") && !error.message.includes("No email address")) {
           throw error
         }
       }

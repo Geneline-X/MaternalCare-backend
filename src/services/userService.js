@@ -10,32 +10,59 @@ class UserService {
    * Create or update user from Clerk data with better error handling
    */
   async createOrUpdateUser(clerkUser) {
-    const { id: clerkId, emailAddresses, firstName, lastName, imageUrl } = clerkUser
-    const email = emailAddresses?.[0]?.emailAddress
+    console.log('Processing Clerk user data:', JSON.stringify(clerkUser, null, 2));
+    
+    // Extract data from the webhook payload
+    const data = clerkUser.data || clerkUser;
+    const clerkId = data.id;
+    
+    // Extract email from the email_addresses array
+    let email = '';
+    if (data.email_addresses?.length > 0) {
+      const primaryEmail = data.email_addresses.find(
+        e => e.id === data.primary_email_address_id
+      ) || data.email_addresses[0];
+      email = primaryEmail.email_address || '';
+    }
+    
+    // Extract name from unsafe_metadata or other locations
+    const unsafeMetadata = data.unsafe_metadata || {};
+    const firstName = unsafeMetadata.firstName || data.first_name || '';
+    const lastName = unsafeMetadata.lastName || data.last_name || '';
+    const imageUrl = data.image_url || data.profile_image_url || '';
 
     if (!email) {
-      throw new Error("No email address found for user")
+      console.error('No email found in Clerk user data. Available fields:', Object.keys(clerkUser));
+      throw new Error("No email address found for user");
     }
 
     if (!clerkId) {
-      throw new Error("No Clerk ID found for user")
+      console.error('No Clerk ID found in user data:', clerkUser);
+      throw new Error("No Clerk ID found for user");
     }
 
     try {
       // Check if user exists in our database
       let user = await User.findOne({ clerkId })
-      const role = clerkUser.publicMetadata?.role || this.determineRoleFromEmail(email)
+      
+      // Get role from unsafe_metadata or determine from email
+      const role = (unsafeMetadata.role || this.determineRoleFromEmail(email) || 'patient').toLowerCase();
 
-      // Prepare user data
+      // Prepare user data with all possible fields
       const userData = {
         clerkId,
         email,
         name: [firstName, lastName].filter(Boolean).join(" ").trim() || email.split("@")[0],
+        firstName,
+        lastName,
         picture: imageUrl,
         role,
-        facilityId: clerkUser.publicMetadata?.facilityId || null,
+        facilityId: unsafeMetadata.facilityId || null,
         lastSyncedAt: new Date(),
-      }
+        clerkData: clerkUser // Store full Clerk data for debugging
+      };
+      
+      console.log('Processed user data:', JSON.stringify(userData, null, 2));
 
       if (!user) {
         // Create new user
@@ -56,11 +83,11 @@ class UserService {
       }
 
       // Update Clerk user metadata with role if not set
-      if (!clerkUser.publicMetadata?.role) {
+      if (!clerkUser.unsafeMetadata?.role) {
         try {
           await clerkClient.users.updateUser(clerkId, {
-            publicMetadata: {
-              ...clerkUser.publicMetadata,
+            unsafeMetadata: {
+              ...clerkUser.unsafeMetadata,
               role,
             },
           })
@@ -111,7 +138,7 @@ class UserService {
 
     // Update in Clerk
     await clerkClient.users.updateUser(clerkId, {
-      publicMetadata: {
+      unsafeMetadata: {
         role: newRole,
       },
     })
@@ -134,7 +161,7 @@ class UserService {
 
     // Update in Clerk
     await clerkClient.users.updateUser(clerkId, {
-      publicMetadata: {
+      unsafeMetadata: {
         facilityId,
       },
     })
