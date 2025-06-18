@@ -7,11 +7,23 @@ import User from "../models/User.js"
  */
 export const authenticate = async (req, res, next) => {
   try {
+    // Debug logging
+    console.log("🔍 Authentication Debug:")
+    console.log("Headers:", req.headers)
+    console.log("req.auth:", req.auth)
+    console.log("Authorization header:", req.headers.authorization)
+
     // Check if req.auth exists and has userId (set by Clerk middleware)
     if (!req.auth || !req.auth.userId) {
+      console.log("❌ No req.auth or userId found")
       return res.status(401).json({
         message: "Authentication required",
         code: "AUTH_REQUIRED",
+        debug: {
+          hasReqAuth: !!req.auth,
+          hasUserId: !!(req.auth && req.auth.userId),
+          authorizationHeader: !!req.headers.authorization,
+        },
       })
     }
 
@@ -19,6 +31,7 @@ export const authenticate = async (req, res, next) => {
     try {
       // Get user from Clerk with retry logic
       clerkUser = await clerkClient.users.getUser(req.auth.userId)
+      console.log("✅ Clerk user found:", clerkUser.id)
     } catch (clerkError) {
       console.error("Clerk API error:", clerkError)
 
@@ -71,6 +84,7 @@ export const authenticate = async (req, res, next) => {
 
         try {
           await user.save()
+          console.log("✅ New user created in MongoDB:", user._id)
         } catch (saveError) {
           // Handle duplicate key error
           if (saveError.code === 11000) {
@@ -82,6 +96,8 @@ export const authenticate = async (req, res, next) => {
             throw saveError
           }
         }
+      } else {
+        console.log("✅ Existing user found in MongoDB:", user._id)
       }
     } catch (dbError) {
       console.error("Database error during authentication:", dbError)
@@ -110,6 +126,7 @@ export const authenticate = async (req, res, next) => {
       orgId: req.auth.orgId,
     }
 
+    console.log("✅ Authentication successful for user:", req.user.email, "Role:", req.user.role)
     next()
   } catch (error) {
     console.error("Authentication error:", error)
@@ -146,6 +163,14 @@ export const authorize = (...requiredPermissions) => {
 
     next()
   }
+}
+
+/**
+ * Permission-based authorization middleware (alias for authorize)
+ * This provides a more descriptive name for permission checking
+ */
+export const requirePermissions = (...requiredPermissions) => {
+  return authorize(...requiredPermissions)
 }
 
 /**
@@ -381,6 +406,7 @@ export const handleAuthErrors = (err, req, res, next) => {
 export default {
   authenticate,
   authorize,
+  requirePermissions,
   requireRole,
   authorizeResource,
   enforceDataOwnership,

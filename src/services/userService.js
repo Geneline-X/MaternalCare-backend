@@ -53,33 +53,56 @@ class UserService {
       const userData = {
         clerkId,
         email,
-        name: `${unsafeMetadata.firstName || ''} ${unsafeMetadata.lastName || ''}`.trim(),
-        firstName: unsafeMetadata.firstName || '',
-        lastName: unsafeMetadata.lastName || '',
-        picture: imageUrl,
+        // Only update name if we have the data in this update
+        ...(unsafeMetadata.firstName && unsafeMetadata.lastName && {
+          name: `${unsafeMetadata.firstName} ${unsafeMetadata.lastName}`.trim(),
+          firstName: unsafeMetadata.firstName,
+          lastName: unsafeMetadata.lastName
+        }),
+        // Only update picture if it exists in this update
+        ...(imageUrl && { picture: imageUrl }),
         role,
-        facilityId: unsafeMetadata.facilityId || null,
+        // Only update facilityId if it exists in this update
+        ...(unsafeMetadata.facilityId && { facilityId: unsafeMetadata.facilityId }),
         lastSyncedAt: new Date(),
         clerkData: clerkUser // Store full Clerk data for debugging
       };
+      
+      // If user exists, preserve existing data for missing fields
+      if (user) {
+        userData.name = userData.name || user.name;
+        userData.firstName = userData.firstName || user.firstName;
+        userData.lastName = userData.lastName || user.lastName;
+        userData.picture = userData.picture || user.picture;
+        userData.facilityId = userData.facilityId || user.facilityId;
+      }
       
       console.log('Processed user data:', JSON.stringify(userData, null, 2));
 
       if (!user) {
         // Create new user
-        user = new User(userData)
-        await user.save()
-        console.log(`Created new user: ${clerkId}`)
+        user = new User(userData);
+        await user.save();
+        console.log(`Created new user: ${clerkId}`);
       } else {
-        // Update existing user only if data has changed
-        const hasChanges = Object.keys(userData).some((key) => {
-          if (key === "lastSyncedAt") return true
-          return JSON.stringify(user[key]) !== JSON.stringify(userData[key])
-        })
-
-        if (hasChanges) {
-          user = await User.findByIdAndUpdate(user._id, { $set: userData }, { new: true })
-          console.log(`Updated existing user: ${clerkId}`)
+        // Update existing user
+        const update = {};
+        
+        // Only include fields that have changed
+        Object.keys(userData).forEach(key => {
+          if (key === 'lastSyncedAt' || 
+              JSON.stringify(user[key]) !== JSON.stringify(userData[key])) {
+            update[key] = userData[key];
+          }
+        });
+        
+        if (Object.keys(update).length > 1) { // More than just lastSyncedAt
+          user = await User.findByIdAndUpdate(
+            user._id, 
+            { $set: update }, 
+            { new: true }
+          );
+          console.log(`Updated user ${clerkId} with:`, JSON.stringify(update, null, 2));
         }
       }
 

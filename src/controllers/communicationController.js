@@ -1,15 +1,23 @@
 import { fhirStore } from "../models/FhirStore.js"
+import {
+  getUserNotifications,
+  markNotificationAsRead,
+  getNotificationCounts as getNotificationCountsService,
+} from "../services/notificationService.js"
 
-// Get all communications
+// Get all communications/notifications for the authenticated user
 export const getCommunications = async (req, res, next) => {
   try {
-    // If patient role, ensure they can only see their own communications
-    if (req.user.role === "patient") {
-      req.query.subject = `Patient/${req.user.id}`
+    const { unreadOnly, type, limit } = req.query
+
+    const options = {
+      unreadOnly: unreadOnly === "true",
+      type: type || null,
+      limit: limit ? Number.parseInt(limit) : 50,
     }
 
-    const communications = await fhirStore.search("Communication", req.query)
-    res.json(communications)
+    const notifications = await getUserNotifications(req.user.id, options)
+    res.json(notifications)
   } catch (error) {
     next(error)
   }
@@ -20,12 +28,10 @@ export const getCommunication = async (req, res, next) => {
   try {
     const communication = await fhirStore.read("Communication", req.params.id)
 
-    // If patient role, ensure they can only see their own communications
-    if (req.user.role === "patient") {
-      const patientId = communication.subject?.reference?.split("/")[1]
-      if (patientId !== req.user.id) {
-        return res.status(403).json({ message: "Forbidden: You can only access your own data" })
-      }
+    // Check if user is a recipient of this communication
+    const isRecipient = communication.recipient.some((r) => r.reference === `User/${req.user.id}`)
+    if (!isRecipient) {
+      return res.status(403).json({ message: "You can only access communications sent to you" })
     }
 
     res.json(communication)
@@ -37,21 +43,31 @@ export const getCommunication = async (req, res, next) => {
   }
 }
 
-// Create a new communication
+// Create a new communication (for direct messaging between users)
 export const createCommunication = async (req, res, next) => {
   try {
-    const communication = req.body
+    const { recipientId, message, type = "message" } = req.body
 
     // Validate required fields
-    if (!communication.status) {
-      return res.status(400).json({ message: "Communication status is required" })
+    if (!recipientId) {
+      return res.status(400).json({ message: "Recipient ID is required" })
+    }
+    if (!message) {
+      return res.status(400).json({ message: "Message is required" })
     }
 
-    if (!communication.payload || !Array.isArray(communication.payload) || communication.payload.length === 0) {
-      return res.status(400).json({ message: "Communication payload is required" })
+    const communication = {
+      resourceType: "Communication",
+      status: "completed",
+      subject: { reference: `User/${req.user.id}` },
+      recipient: [{ reference: `User/${recipientId}` }],
+      payload: [{ contentString: message }],
+      sent: new Date().toISOString(),
+      category: [{ text: type }],
+      notificationType: type,
+      isRead: false,
     }
 
-    // Create the communication
     const createdCommunication = await fhirStore.create("Communication", communication)
     res.status(201).json(createdCommunication)
   } catch (error) {
@@ -59,11 +75,31 @@ export const createCommunication = async (req, res, next) => {
   }
 }
 
-// Update a communication
+// Mark a communication as read
+export const markAsRead = async (req, res, next) => {
+  try {
+    const updatedCommunication = await markNotificationAsRead(req.params.id, req.user.id)
+    res.json(updatedCommunication)
+  } catch (error) {
+    if (error.message.includes("not found") || error.message.includes("not a recipient")) {
+      return res.status(404).json({ message: error.message })
+    }
+    next(error)
+  }
+}
+
+// Update a communication (limited functionality)
 export const updateCommunication = async (req, res, next) => {
   try {
-    const communication = req.body
-    const updatedCommunication = await fhirStore.update("Communication", req.params.id, communication)
+    const communication = await fhirStore.read("Communication", req.params.id)
+
+    // Only allow marking as read/unread
+    const allowedUpdates = { isRead: req.body.isRead }
+    const updatedCommunication = await fhirStore.update("Communication", req.params.id, {
+      ...communication,
+      ...allowedUpdates,
+    })
+
     res.json(updatedCommunication)
   } catch (error) {
     if (error.message.includes("not found")) {
@@ -73,15 +109,33 @@ export const updateCommunication = async (req, res, next) => {
   }
 }
 
-// Delete a communication
+// Delete a communication (only sender can delete)
 export const deleteCommunication = async (req, res, next) => {
   try {
+    const communication = await fhirStore.read("Communication", req.params.id)
+
+    // Only sender can delete
+    const [, senderId] = communication.subject?.reference?.split("/") || []
+    if (senderId !== req.user.id) {
+      return res.status(403).json({ message: "You can only delete communications you sent" })
+    }
+
     await fhirStore.delete("Communication", req.params.id)
     res.json({ message: `Communication ${req.params.id} deleted successfully` })
   } catch (error) {
     if (error.message.includes("not found")) {
       return res.status(404).json({ message: error.message })
     }
+    next(error)
+  }
+}
+
+// Get notification counts for the authenticated user
+export const getNotificationCounts = async (req, res, next) => {
+  try {
+    const counts = await getNotificationCountsService(req.user.id)
+    res.json(counts)
+  } catch (error) {
     next(error)
   }
 }

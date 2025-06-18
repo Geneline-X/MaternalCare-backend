@@ -23,6 +23,7 @@ import {
   createAppointment,
   updateAppointment,
   deleteAppointment,
+  getAvailableDoctors,
 } from "../controllers/appointmentController.js"
 import {
   getQuestionnaires,
@@ -59,6 +60,8 @@ import {
   createCommunication,
   updateCommunication,
   deleteCommunication,
+  markAsRead,
+  getNotificationCounts,
 } from "../controllers/communicationController.js"
 
 const router = express.Router()
@@ -90,6 +93,9 @@ router.get("/Appointment/:id", getAppointment)
 router.post("/Appointment", createAppointment)
 router.put("/Appointment/:id", updateAppointment)
 router.delete("/Appointment/:id", deleteAppointment)
+
+// Available doctors route
+router.get("/doctors", getAvailableDoctors)
 
 // Questionnaire routes (forms)
 router.get("/Questionnaire", getQuestionnaires)
@@ -126,11 +132,13 @@ router.post("/Encounter", createEncounter)
 router.put("/Encounter/:id", updateEncounter)
 router.delete("/Encounter/:id", deleteEncounter)
 
-// Communication routes (messages)
+// Communication/Notification routes
 router.get("/Communication", getCommunications)
+router.get("/Communication/counts", getNotificationCounts)
 router.get("/Communication/:id", getCommunication)
 router.post("/Communication", createCommunication)
 router.put("/Communication/:id", updateCommunication)
+router.put("/Communication/:id/read", markAsRead)
 router.delete("/Communication/:id", deleteCommunication)
 
 export default router

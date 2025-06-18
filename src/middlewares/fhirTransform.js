@@ -134,59 +134,55 @@ function transformPatientToFhir(restData) {
   }
 }
 
-// Appointment transformations
+// Appointment transformations - Updated to reference User instead of Practitioner
 function transformAppointmentToFhir(restData) {
+  // Calculate start and end times
+  const startDateTime = `${restData.date}T${restData.time}:00.000Z`
+  const endDateTime = calculateEndTime(startDateTime, restData.duration || 30)
+
   return {
     resourceType: "Appointment",
     id: restData.id || uuidv4(),
-    status: restData.status || "booked",
+    status: restData.status || "pending",
     appointmentType: {
       coding: [
         {
           system: "http://terminology.hl7.org/CodeSystem/v2-0276",
-          code: restData.type || "routine",
-          display: restData.type || "Routine",
+          code: restData.appointmentType || "routine",
+          display: capitalizeFirst(restData.appointmentType || "routine"),
         },
       ],
     },
-    description: restData.description || "",
-    start: restData.startDateTime || `${restData.date}T${restData.time}:00.000Z`,
-    end:
-      restData.endDateTime ||
-      calculateEndTime(restData.startDateTime || `${restData.date}T${restData.time}:00.000Z`, restData.duration || 30),
+    description: restData.reason || "",
+    start: startDateTime,
+    end: endDateTime,
     minutesDuration: restData.duration || 30,
     comment: restData.notes || "",
+    // Store the actual user IDs for easy reference
+    patientId: restData.patientId,
+    doctorId: restData.doctorId,
     participant: [
-      ...(restData.patientId
-        ? [
-            {
-              actor: { reference: `Patient/${restData.patientId}` },
-              required: "required",
-              status: "accepted",
-            },
-          ]
-        : []),
-      ...(restData.doctorId
-        ? [
-            {
-              actor: { reference: `Practitioner/${restData.doctorId}` },
-              required: "required",
-              status: "accepted",
-            },
-          ]
-        : []),
-      ...(restData.location
-        ? [
-            {
-              actor: {
-                reference: `Location/${restData.location}`,
-                display: restData.location,
-              },
-              required: "required",
-              status: "accepted",
-            },
-          ]
-        : []),
+      {
+        actor: { reference: `Patient/${restData.patientId}` },
+        required: "required",
+        status: "accepted",
+      },
+      {
+        actor: { reference: `User/${restData.doctorId}` }, // Changed to reference User
+        required: "required",
+        status: "accepted",
+      },
+    ],
+    // Add custom extensions for additional fields
+    extension: [
+      {
+        url: "http://prestack.com/fhir/StructureDefinition/preferred-contact",
+        valueString: restData.preferredContact || "phone",
+      },
+      {
+        url: "http://prestack.com/fhir/StructureDefinition/reminder-enabled",
+        valueBoolean: restData.reminderEnabled !== false,
+      },
     ],
   }
 }
@@ -343,7 +339,7 @@ function transformCommunicationToFhir(restData) {
       : [],
     sender: restData.senderId
       ? {
-          reference: `${restData.senderType || "Practitioner"}/${restData.senderId}`,
+          reference: `${restData.senderType || "User"}/${restData.senderId}`, // Changed to User
         }
       : undefined,
     payload: [
@@ -407,7 +403,7 @@ function transformEncounterToFhir(restData) {
       ? [
           {
             individual: {
-              reference: `Practitioner/${restData.doctorId}`,
+              reference: `User/${restData.doctorId}`, // Changed to User
             },
           },
         ]
@@ -458,6 +454,11 @@ function formatAnswerValue(answer) {
     return [{ valueBoolean: answer }]
   }
   return [{ valueString: String(answer) }]
+}
+
+// Helper function to capitalize first letter
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
 export default {

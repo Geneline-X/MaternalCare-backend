@@ -1,175 +1,229 @@
+import nodemailer from "nodemailer"
 import { fhirStore } from "../models/FhirStore.js"
+import User from "../models/User.js"
 
-// Get notifications for user
-export const getNotifications = async (req, res, next) => {
+// Create nodemailer transporter
+const transporter = nodemailer.createTransporter({
+  host: process.env.EMAIL_HOST || "smtp.gmail.com",
+  port: process.env.EMAIL_PORT || 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+})
+
+// Send notification
+export const sendNotification = async ({ subject, payload, recipients }) => {
   try {
-    const userId = req.user.id
-    const userRole = req.user.role
-    const { status = "unread", type, limit = 20 } = req.query
-
-    // Search for Communications marked as notifications
-    const searchParams = {
-      recipient: `${userRole === "patient" ? "Patient" : "Practitioner"}/${userId}`,
-      category: "notification",
-    }
-
-    if (status === "unread") {
-      searchParams.status = "in-progress"
-    } else if (status === "read") {
-      searchParams.status = "completed"
-    }
-
-    const communications = await fhirStore.search("Communication", searchParams)
-
-    // Format notifications for mobile
-    const notifications = communications.slice(0, limit).map((comm) => {
-      const notificationType = comm.reasonCode?.[0]?.coding?.[0]?.code || "system"
-
-      return {
-        id: comm.id,
-        type: notificationType,
-        title: getNotificationTitle(notificationType),
-        message: comm.payload?.[0]?.contentString || "",
-        timestamp: comm.sent || comm.received,
-        read: comm.status === "completed",
-        actionRequired: comm.priority === "urgent",
-        data: {
-          appointmentId: comm.about?.[0]?.reference?.split("/")[1] || null,
-        },
-      }
-    })
-
-    const unreadCount = notifications.filter((n) => !n.read).length
-
-    res.json({
-      success: true,
-      data: {
-        notifications,
-        unreadCount,
-      },
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
-// Mark notification as read
-export const markNotificationRead = async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const userId = req.user.id
-    const userRole = req.user.role
-
-    // Get the communication
-    const communication = await fhirStore.read("Communication", id)
-
-    // Verify user has permission to mark this notification as read
-    const recipientRef = communication.recipient?.[0]?.reference
-    const expectedRef = `${userRole === "patient" ? "Patient" : "Practitioner"}/${userId}`
-
-    if (recipientRef !== expectedRef) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only mark your own notifications as read",
-      })
-    }
-
-    // Update status to completed (read)
-    const updatedCommunication = {
-      ...communication,
+    // Create Communication resource
+    const communication = {
+      resourceType: "Communication",
       status: "completed",
+      subject: subject,
+      recipient: recipients,
+      payload: [{ contentString: payload }],
+      sent: new Date().toISOString(),
+      medium: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode", code: "EMAIL" }] }],
     }
 
-    await fhirStore.update("Communication", id, updatedCommunication)
+    const createdCommunication = await fhirStore.create("Communication", communication)
 
-    res.json({
-      success: true,
-      message: "Notification marked as read",
-    })
+    // Send email notifications
+    for (const recipient of recipients) {
+      const [recipientType, recipientId] = recipient.reference.split("/")
+
+      let recipientResource
+      let email
+
+      try {
+        if (recipientType === "Patient" || recipientType === "User") {
+          // Fetch from MongoDB users collection
+          recipientResource = await User.findById(recipientId)
+          if (recipientResource) {
+            email = recipientResource.email
+          }
+        } else {
+          // For other FHIR resources, try to fetch from FHIR store
+          recipientResource = await fhirStore.read(recipientType, recipientId)
+          if (recipientResource && recipientResource.telecom) {
+            email = recipientResource.telecom.find((t) => t.system === "email")?.value
+          }
+        }
+      } catch (error) {
+        console.error(`Recipient not found: ${recipient.reference}`, error.message)
+        continue
+      }
+
+      if (!recipientResource) {
+        console.error(`Recipient not found: ${recipient.reference}`)
+        continue
+      }
+
+      if (!email) {
+        console.error(`No email found for recipient: ${recipient.reference}`)
+        continue
+      }
+
+      // Send email
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: "PreSTrack Notification",
+          text: payload,
+          html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">PreSTrack Notification</h2>
+            <p style="font-size: 16px; line-height: 1.5;">${payload}</p>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <p style="font-size: 12px; color: #6b7280;">
+              This is an automated message from PreSTrack. Please do not reply to this email.
+            </p>
+          </div>`,
+        })
+
+        console.log(`✅ Email sent to ${email} (${recipient.reference})`)
+      } catch (error) {
+        console.error(`❌ Error sending email to ${email}:`, error.message)
+      }
+    }
+
+    return createdCommunication
   } catch (error) {
-    if (error.message.includes("not found")) {
-      return res.status(404).json({ success: false, message: "Notification not found" })
-    }
-    next(error)
+    console.error("❌ Error sending notification:", error)
+    throw error
   }
 }
 
-// Register device for push notifications
-export const registerDevice = async (req, res, next) => {
+// Enhanced notification service with user lookup
+export const sendUserNotification = async ({ userId, subject, message, type = "general" }) => {
   try {
-    const { deviceToken, platform, deviceId } = req.body
-    const userId = req.user.id
-    const userRole = req.user.role
-
-    // Create or update device registration
-    // In a real implementation, you'd store this in a separate collection
-    // For now, we'll create a Device resource
-    const device = {
-      resourceType: "Device",
-      identifier: [
-        {
-          system: "http://prestack.com/device-id",
-          value: deviceId,
-        },
-      ],
-      status: "active",
-      deviceName: [
-        {
-          name: `${platform} Device`,
-          type: "user-friendly-name",
-        },
-      ],
-      owner: {
-        reference: `${userRole === "patient" ? "Patient" : "Practitioner"}/${userId}`,
-      },
-      note: [
-        {
-          text: `Push token: ${deviceToken}, Platform: ${platform}`,
-        },
-      ],
+    const user = await User.findById(userId)
+    if (!user) {
+      throw new Error(`User not found: ${userId}`)
     }
 
-    // Check if device already exists
-    const existingDevices = await fhirStore.search("Device", {
-      identifier: deviceId,
-      owner: `${userRole === "patient" ? "Patient" : "Practitioner"}/${userId}`,
-    })
-
-    let result
-    if (existingDevices.length > 0) {
-      // Update existing device
-      result = await fhirStore.update("Device", existingDevices[0].id, device)
-    } else {
-      // Create new device
-      result = await fhirStore.create("Device", device)
+    if (!user.email) {
+      throw new Error(`No email found for user: ${userId}`)
     }
 
-    res.json({
-      success: true,
-      data: {
-        deviceId: result.id,
-        message: "Device registered successfully",
-      },
+    // Create Communication resource
+    const communication = {
+      resourceType: "Communication",
+      status: "completed",
+      subject: { reference: `User/${userId}` },
+      recipient: [{ reference: `User/${userId}` }],
+      payload: [{ contentString: message }],
+      sent: new Date().toISOString(),
+      medium: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode", code: "EMAIL" }] }],
+      category: [{ text: type }],
+    }
+
+    const createdCommunication = await fhirStore.create("Communication", communication)
+
+    // Send email
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: subject || "PreSTrack Notification",
+      text: message,
+      html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">PreSTrack</h2>
+        <h3 style="color: #374151;">${subject || "Notification"}</h3>
+        <p style="font-size: 16px; line-height: 1.5;">${message}</p>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+        <p style="font-size: 12px; color: #6b7280;">
+          Hello ${user.firstName} ${user.lastName},<br>
+          This is an automated message from PreSTrack. Please do not reply to this email.
+        </p>
+      </div>`,
     })
+
+    console.log(`✅ Notification sent to ${user.email} (${user.firstName} ${user.lastName})`)
+    return createdCommunication
   } catch (error) {
-    next(error)
+    console.error("❌ Error sending user notification:", error)
+    throw error
   }
 }
 
-// Helper function to get notification titles
-function getNotificationTitle(type) {
-  const titles = {
-    appointment: "Appointment Reminder",
-    health: "Health Update",
-    medication: "Medication Reminder",
-    baby_development: "Baby Development",
-    system: "System Notification",
+// Check for missed appointments
+export const checkMissedAppointments = async () => {
+  try {
+    // Get all active care plans
+    const carePlans = await fhirStore.search("CarePlan", { status: "active" })
+
+    for (const carePlan of carePlans) {
+      const patientReference = carePlan.subject?.reference
+      if (!patientReference) continue
+
+      // Check each activity
+      for (const activity of carePlan.activity || []) {
+        if (activity.detail?.status !== "scheduled") continue
+
+        const scheduledPeriod = activity.detail?.scheduledTiming?.repeat?.boundsPeriod
+        if (!scheduledPeriod || !scheduledPeriod.end) continue
+
+        const endDate = new Date(scheduledPeriod.end)
+        const now = new Date()
+
+        // If end date has passed
+        if (endDate < now) {
+          // Check if there's an encounter for this activity
+          const encounters = await fhirStore.search("Encounter", {
+            subject: patientReference,
+            date: `ge${scheduledPeriod.start}&le${scheduledPeriod.end}`,
+          })
+
+          // If no encounters found, send a missed appointment notification
+          if (encounters.length === 0) {
+            const [, patientId] = patientReference.split("/")
+            await sendUserNotification({
+              userId: patientId,
+              subject: "Missed Appointment",
+              message: `Missed appointment: ${activity.detail.description}`,
+              type: "missed_appointment",
+            })
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error checking missed appointments:", error)
+    throw error
   }
-  return titles[type] || "Notification"
 }
 
-export default {
-  getNotifications,
-  markNotificationRead,
-  registerDevice,
+// Send appointment-specific notifications
+export const sendAppointmentNotification = async ({ patientId, doctorId, message, type = "appointment" }) => {
+  try {
+    const notifications = []
+
+    // Send to patient
+    if (patientId) {
+      const patientNotification = await sendUserNotification({
+        userId: patientId,
+        subject: "Appointment Update",
+        message,
+        type,
+      })
+      notifications.push(patientNotification)
+    }
+
+    // Send to doctor
+    if (doctorId) {
+      const doctorNotification = await sendUserNotification({
+        userId: doctorId,
+        subject: "Appointment Update",
+        message,
+        type,
+      })
+      notifications.push(doctorNotification)
+    }
+
+    return notifications
+  } catch (error) {
+    console.error("❌ Error sending appointment notifications:", error)
+    throw error
+  }
 }
