@@ -28,6 +28,9 @@ class UserService {
     // Extract name from unsafe_metadata or other locations
     const unsafeMetadata = data.unsafe_metadata || {};
     const imageUrl = data.image_url || data.profile_image_url || '';
+    
+    // Log the metadata for debugging
+    console.log('Unsafe Metadata:', JSON.stringify(unsafeMetadata, null, 2));
 
     if (!email) {
       console.error('No email found in Clerk user data. Available fields:', Object.keys(clerkUser));
@@ -50,9 +53,9 @@ class UserService {
       const userData = {
         clerkId,
         email,
-        name: unsafeMetadata.firstName + " " + unsafeMetadata.lastName,
-        firstName: unsafeMetadata.firstName,
-        lastName: unsafeMetadata.lastName,
+        name: `${unsafeMetadata.firstName || ''} ${unsafeMetadata.lastName || ''}`.trim(),
+        firstName: unsafeMetadata.firstName || '',
+        lastName: unsafeMetadata.lastName || '',
         picture: imageUrl,
         role,
         facilityId: unsafeMetadata.facilityId || null,
