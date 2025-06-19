@@ -2,17 +2,25 @@ import { fhirStore } from "../models/FhirStore.js"
 import { sendAppointmentNotification } from "../services/notificationService.js"
 import User from "../models/User.js"
 
+// Add this helper function at the top of the file
+const isSameDate = (date1, date2) => {
+  const d1 = new Date(date1)
+  const d2 = new Date(date2)
+  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate()
+}
+
+// Update the getAppointments function to handle date filtering better
 export const getAppointments = async (req, res, next) => {
   try {
     console.log("🔍 Getting appointments for user:", req.user)
     console.log("🔍 Query params:", req.query)
 
-    const { doctorId, status, date } = req.query
+    const { doctorId, status, date, today } = req.query
     const searchParams = {}
 
     // For patients, only show their own appointments
     if (req.user.role === "patient") {
-      searchParams.patientId = req.user.id // Changed from patient reference to direct patientId
+      searchParams.patientId = req.user.id
       console.log("👤 Patient search - patientId:", req.user.id)
     } else {
       // For doctors/nurses/admins, allow filtering by patientId if provided
@@ -38,7 +46,15 @@ export const getAppointments = async (req, res, next) => {
 
     console.log("🔍 Final search params:", searchParams)
 
-    const appointments = await fhirStore.search("Appointment", searchParams)
+    let appointments = await fhirStore.search("Appointment", searchParams)
+
+    // If today filter is requested, filter appointments for today
+    if (today === "true") {
+      const todayDate = new Date().toISOString().split("T")[0]
+      appointments = appointments.filter((apt) => apt.date === todayDate || isSameDate(apt.date, todayDate))
+      console.log("📅 Filtered for today, found:", appointments.length)
+    }
+
     console.log("📋 Found appointments:", appointments.length)
 
     // If no appointments found, let's debug what's in the database

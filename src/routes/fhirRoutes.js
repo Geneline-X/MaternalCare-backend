@@ -64,6 +64,39 @@ import {
   getNotificationCounts,
 } from "../controllers/communicationController.js"
 
+// Import new controllers at the top
+import { getDashboardMetrics, getPatientAnalytics, getTodaySchedule } from "../controllers/dashboardController.js"
+import { searchAll } from "../controllers/searchController.js"
+import {
+  createPregnancy,
+  getCurrentPregnancy,
+  updatePregnancy,
+  completePregnancy,
+} from "../controllers/pregnancyController.js"
+
+// Import new controllers
+import {
+  getHealthMetrics,
+  getHealthMetricsSummary,
+  getHealthMetricsTrends,
+} from "../controllers/healthMetricsController.js"
+import {
+  getFormTemplates,
+  createFormTemplate,
+  sendFormToPatients,
+  updateFormTemplate,
+  deleteFormTemplate,
+} from "../controllers/formTemplateController.js"
+import {
+  getAnalyticsMetrics,
+  getAnalyticsCharts,
+  getAnalyticsInsights,
+  exportAnalyticsReport,
+} from "../controllers/analyticsController.js"
+import { getAvailableTimeSlots } from "../controllers/scheduleController.js"
+import { getPatientSummary } from "../controllers/patientController.js"
+import { getEnhancedDashboardMetrics } from "../controllers/dashboardController.js"
+
 const router = express.Router()
 
 // Apply authentication to all routes
@@ -140,5 +173,52 @@ router.post("/Communication", createCommunication)
 router.put("/Communication/:id", updateCommunication)
 router.put("/Communication/:id/read", markAsRead)
 router.delete("/Communication/:id", deleteCommunication)
+
+// Add these routes after the existing routes, before export default router
+
+// Dashboard routes
+router.get("/dashboard/metrics", getDashboardMetrics)
+router.get("/dashboard/analytics", getPatientAnalytics)
+router.get("/dashboard/schedule/today", getTodaySchedule)
+
+// Search routes
+router.get("/search", searchAll)
+
+// Pregnancy management routes (FHIR EpisodeOfCare)
+router.post("/pregnancy", createPregnancy)
+router.get("/pregnancy/current/:patientId", getCurrentPregnancy)
+router.get("/pregnancy/current", getCurrentPregnancy) // For patients to get their own
+router.put("/pregnancy/:pregnancyId", updatePregnancy)
+router.put("/pregnancy/:pregnancyId/complete", completePregnancy)
+
+// Enhanced dashboard routes
+router.get("/dashboard/enhanced-metrics", getEnhancedDashboardMetrics)
+
+// Patient summary routes
+router.get("/patients/summary", getPatientSummary)
+
+// Health metrics routes
+router.get("/health-metrics", getHealthMetrics)
+router.get("/health-metrics/summary", getHealthMetricsSummary)
+router.get("/health-metrics/trends", getHealthMetricsTrends)
+
+// Form template routes
+router.get("/forms/templates", getFormTemplates)
+router.post("/forms/templates", createFormTemplate)
+router.post("/forms/send", sendFormToPatients)
+router.put("/forms/templates/:formId", updateFormTemplate)
+router.delete("/forms/templates/:formId", deleteFormTemplate)
+
+// Analytics routes
+router.get("/analytics/metrics", getAnalyticsMetrics)
+router.get("/analytics/charts", getAnalyticsCharts)
+router.get("/analytics/insights", getAnalyticsInsights)
+router.post("/analytics/export", exportAnalyticsReport)
+
+// Schedule availability routes
+router.get("/schedule/availability", getAvailableTimeSlots)
+
+// Enhanced communication routes
+router.put("/Communication/mark-all-read", markAsRead)
 
 export default router
