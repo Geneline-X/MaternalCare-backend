@@ -139,3 +139,43 @@ export const getNotificationCounts = async (req, res, next) => {
     next(error)
   }
 }
+
+// Mark all notifications as read for the authenticated user
+export const markAllAsRead = async (req, res, next) => {
+  try {
+    const userId = req.user.id
+
+    // Get all unread communications for this user
+    const unreadCommunications = await fhirStore.search("Communication", {})
+    const userUnreadCommunications = unreadCommunications.filter((comm) => {
+      const isRecipient = comm.recipient?.some((r) => r.reference === `User/${userId}`)
+      return isRecipient && !comm.isRead
+    })
+
+    let updatedCount = 0
+
+    // Mark each as read
+    for (const communication of userUnreadCommunications) {
+      try {
+        await fhirStore.update("Communication", communication.id, {
+          ...communication,
+          isRead: true,
+        })
+        updatedCount++
+      } catch (error) {
+        console.log(`Failed to mark communication ${communication.id} as read:`, error.message)
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        updatedCount,
+      },
+      message: `Marked ${updatedCount} notifications as read`,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    next(error)
+  }
+}

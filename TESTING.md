@@ -172,7 +172,272 @@ curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/auth/
 curl -X POST -H "Content-Type: application/json" -H "clerk-signature: YOUR_SIGNATURE" -d '{"type":"user.created","data":{}}' http://localhost:3000/api/auth/webhook
 ```
 
+### Authentication Endpoints
+
+#### Get Authentication Status
+```bash
+curl -X GET http://localhost:3000/api/auth/status
+```
+
+#### Handle Webhook
+```bash
+curl -X POST -H "Content-Type: application/json" -H "clerk-signature: YOUR_SIGNATURE" -d '{"type":"user.created","data":{}}' http://localhost:3000/api/auth/webhook
+```
+
+#### Get Current User Profile
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/auth/me
+```
+
+#### Update User Role (Admin only)
+```bash
+curl -X PUT -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{"role":"admin"}' http://localhost:3000/api/auth/users/USER_ID/role
+```
+
 ### FHIR Resource Endpoints
+
+#### Patient Endpoints
+
+##### Get All Patients
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Patient
+```
+
+##### Get Specific Patient
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Patient/PATIENT_ID
+```
+
+##### Create Patient
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "resourceType": "Patient",
+  "name": [{"given": ["John"], "family": "Doe"}],
+  "gender": "male",
+  "birthDate": "1990-01-01"
+}' http://localhost:3000/api/fhir/Patient
+```
+
+#### Observation Endpoints
+
+##### Get All Observations
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Observation
+```
+
+##### Get Specific Observation
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Observation/OBSERVATION_ID
+```
+
+##### Create Observation
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "resourceType": "Observation",
+  "status": "final",
+  "code": {
+    "coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure"}]
+  },
+  "subject": {"reference": "Patient/PATIENT_ID"},
+  "effectiveDateTime": "2023-01-01T12:00:00Z",
+  "valueQuantity": {"value": 120, "unit": "mmHg"}
+}' http://localhost:3000/api/fhir/Observation
+```
+
+#### Appointment Endpoints
+
+##### Get All Appointments
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Appointment
+```
+
+##### Create Appointment
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "resourceType": "Appointment",
+  "status": "booked",
+  "serviceType": [{"coding": [{"system": "http://snomed.info/sct", "code": "185349003"}]}],
+  "start": "2023-01-15T10:00:00Z",
+  "end": "2023-01-15T10:30:00Z",
+  "participant": [
+    {"actor": {"reference": "Practitioner/PRACTITIONER_ID"}, "status": "accepted"},
+    {"actor": {"reference": "Patient/PATIENT_ID"}, "status": "accepted"}
+  ]
+}' http://localhost:3000/api/fhir/Appointment
+```
+
+### Mobile App Endpoints
+
+#### Patient Management
+
+##### Get Mobile Patients (Doctor/Nurse only)
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/patients
+```
+
+##### Get Patient Details
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/patients/PATIENT_ID
+```
+
+#### Pregnancy Management
+
+##### Get Current Pregnancy
+```bash
+# For doctors accessing patient records
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/pregnancies/current/PATIENT_ID
+
+# For patients accessing their own records
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/pregnancies/current
+```
+
+#### Health Metrics
+
+##### Get Patient Health Metrics (Doctor/Nurse)
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/health-metrics/patient/PATIENT_ID
+```
+
+##### Get My Health Metrics (Patient)
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/health-metrics/my-metrics
+```
+
+#### Messaging
+
+##### Get Conversations
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/messages/conversations
+```
+
+##### Send Message
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "conversationId": "CONVERSATION_ID",
+  "content": "Hello, how are you?",
+  "attachments": []
+}' http://localhost:3000/api/mobile/messages
+```
+
+#### File Upload
+
+##### Upload File
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -F "file=@/path/to/file.jpg" http://localhost:3000/api/mobile/files/upload
+```
+
+### Analytics Endpoints
+
+#### Get Pregnancy Analytics
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/analytics/pregnancy
+```
+
+### Available Doctors
+
+##### Get Available Doctors
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/doctors
+```
+
+### Communication Endpoints
+
+##### Get All Communications
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Communication
+```
+
+##### Get Notification Counts
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Communication/counts
+```
+
+##### Mark Notification as Read
+```bash
+curl -X PUT -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Communication/MESSAGE_ID/read
+```
+
+### Care Plan Endpoints
+
+##### Get All Care Plans
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/CarePlan
+```
+
+### Flag Endpoints (Alerts)
+
+##### Get All Flags
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Flag
+```
+
+### Encounter Endpoints
+
+##### Get All Encounters
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Encounter
+```
+
+### Questionnaire Response Endpoints
+
+##### Submit Questionnaire Response
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "resourceType": "QuestionnaireResponse",
+  "questionnaire": "Questionnaire/QUESTIONNAIRE_ID",
+  "status": "completed",
+  "subject": {"reference": "Patient/PATIENT_ID"},
+  "item": [
+    {
+      "linkId": "question1",
+      "text": "What is your name?",
+      "answer": [{"valueString": "John Doe"}]
+    }
+  ]
+}' http://localhost:3000/api/fhir/QuestionnaireResponse
+```
+
+### User Management
+
+#### Get Users by Role
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/auth/users/role/doctor
+```
+
+#### Assign User to Facility
+```bash
+curl -X PUT -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{"facilityId": "FACILITY_ID"}' http://localhost:3000/api/auth/users/USER_ID/facility
+```
+
+### Forms & Questionnaires
+
+#### Get Patient Forms
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/forms/patient-forms
+```
+
+#### Submit Form
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "formId": "FORM_ID",
+  "responses": {
+    "question1": "Answer 1",
+    "question2": "Answer 2"
+  }
+}' http://localhost:3000/api/mobile/form-submissions
+```
+
+### File Management
+
+#### Get User Files
+```bash
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/files
+```
+
+#### Delete File
+```bash
+curl -X DELETE -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/mobile/files/FILE_ID
+```
 
 #### Questionnaire Endpoints
 
@@ -183,12 +448,13 @@ curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/
 
 ##### Get Specific Questionnaire
 ```bash
-curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Questionnaire/pregnancy-patient-registration
+curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" http://localhost:3000/api/fhir/Questionnaire/QUESTIONNAIRE_ID
 ```
 
 ##### Create Questionnaire (Doctor role required)
 ```bash
 curl -X POST -H "Authorization: Bearer YOUR_CLERK_TOKEN" -H "Content-Type: application/json" -d '{
+  "resourceType": "Questionnaire",
   "status": "active",
   "title": "New Questionnaire",
   "item": [
