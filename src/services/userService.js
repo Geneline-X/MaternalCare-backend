@@ -78,6 +78,11 @@ class UserService {
         firstName,
         lastName,
         unsafeMeta: unsafeMetadata,
+        // Extract profession and experienceYears from unsafe_metadata if they exist
+        ...(unsafeMetadata.profession && { profession: unsafeMetadata.profession }),
+        ...(unsafeMetadata.experienceYears && { 
+          experienceYears: Number(unsafeMetadata.experienceYears) || 0 
+        }),
         // Only update picture if it exists in this update
         ...(imageUrl && { picture: imageUrl }),
         role,
@@ -94,9 +99,18 @@ class UserService {
         userData.lastName = userData.lastName || user.lastName || '';
         userData.picture = userData.picture || user.picture;
         userData.facilityId = userData.facilityId || user.facilityId;
+        userData.profession = userData.profession || user.profession || '';
+        userData.experienceYears = userData.experienceYears || user.experienceYears || 0;
+        
         // Merge existing unsafeMeta with new data
         if (user.unsafeMeta) {
-          userData.unsafeMeta = { ...user.unsafeMeta.toObject(), ...userData.unsafeMeta };
+          userData.unsafeMeta = { 
+            ...user.unsafeMeta.toObject(), 
+            ...userData.unsafeMeta,
+            // Preserve profession and experienceYears in unsafeMeta for backward compatibility
+            ...(user.profession && { profession: user.profession }),
+            ...(user.experienceYears && { experienceYears: user.experienceYears })
+          };
         }
       }
       

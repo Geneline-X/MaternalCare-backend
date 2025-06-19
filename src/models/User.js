@@ -44,6 +44,14 @@ const userSchema = new mongoose.Schema(
       of: mongoose.Schema.Types.Mixed,
       default: {}
     },
+    profession: {
+      type: String,
+      default: ''
+    },
+    experienceYears: {
+      type: Number,
+      default: 0
+    },
   },
   {
     timestamps: true,
