@@ -65,8 +65,8 @@ import {
 } from "../controllers/communicationController.js"
 
 // Import new controllers at the top
-import { getDashboardMetrics, getPatientAnalytics, getTodaySchedule } from "../controllers/dashboardController.js"
-import { searchAll } from "../controllers/searchController.js"
+import { getDashboardMetrics, getDashboardAnalytics, getTodaySchedule } from "../controllers/dashboardController.js"
+import { enhancedSearchAll } from "../controllers/searchController.js"
 import {
   createPregnancy,
   getCurrentPregnancy,
@@ -82,6 +82,7 @@ import {
 } from "../controllers/healthMetricsController.js"
 import {
   getFormTemplates,
+  getFormTemplate,
   createFormTemplate,
   sendFormToPatients,
   updateFormTemplate,
@@ -178,11 +179,11 @@ router.delete("/Communication/:id", deleteCommunication)
 
 // Dashboard routes
 router.get("/dashboard/metrics", getDashboardMetrics)
-router.get("/dashboard/analytics", getPatientAnalytics)
+router.get("/dashboard/analytics", getDashboardAnalytics)
 router.get("/dashboard/schedule/today", getTodaySchedule)
 
 // Search routes
-router.get("/search", searchAll)
+router.get("/search", enhancedSearchAll)
 
 // Pregnancy management routes (FHIR EpisodeOfCare)
 router.post("/pregnancy", createPregnancy)
@@ -204,6 +205,7 @@ router.get("/health-metrics/trends", getHealthMetricsTrends)
 
 // Form template routes
 router.get("/forms/templates", getFormTemplates)
+router.get("/forms/templates/:formId", getFormTemplate)
 router.post("/forms/templates", createFormTemplate)
 router.post("/forms/send", sendFormToPatients)
 router.put("/forms/templates/:formId", updateFormTemplate)

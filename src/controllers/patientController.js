@@ -34,24 +34,324 @@ export const getPatient = async (req, res, next) => {
   }
 }
 
-// Create a new patient
+/**
+ * Create a new patient - MATCHES FRONTEND FORM
+ */
 export const createPatient = async (req, res, next) => {
   try {
-    const patient = req.body
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      address,
+      emergencyContactName,
+      emergencyContactPhone,
+      medicalHistory,
+      allergies,
+      currentMedications,
+      isHighRisk,
+      bloodType,
+      insurance,
+    } = req.body
 
     // Validate required fields
-    if (!patient.name || !Array.isArray(patient.name) || patient.name.length === 0) {
-      return res.status(400).json({ message: "Patient name is required" })
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !phone ||
+      !dateOfBirth ||
+      !emergencyContactName ||
+      !emergencyContactPhone
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+      })
     }
 
-    // Create the patient
-    const createdPatient = await fhirStore.create("Patient", patient)
-    res.status(201).json(createdPatient)
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address",
+      })
+    }
+
+    // Check if patient already exists
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "A patient with this email already exists",
+      })
+    }
+
+    // Create User record first
+    const userData = {
+      firstName,
+      lastName,
+      email,
+      phone,
+      role: "patient",
+      dateOfBirth: new Date(dateOfBirth),
+      address,
+      emergencyContact: {
+        name: emergencyContactName,
+        phone: emergencyContactPhone,
+      },
+      medicalInfo: {
+        history: medicalHistory || "",
+        allergies: allergies || "",
+        currentMedications: currentMedications || "",
+        bloodType: bloodType || "",
+        insurance: insurance || "",
+      },
+      isHighRisk: isHighRisk || false,
+      createdBy: req.user.id,
+      createdAt: new Date(),
+    }
+
+    const createdUser = await User.create(userData)
+
+    // Create FHIR Patient resource
+    const fhirPatient = {
+      resourceType: "Patient",
+      id: createdUser._id.toString(),
+      active: true,
+      name: [
+        {
+          use: "official",
+          family: lastName,
+          given: [firstName],
+        },
+      ],
+      telecom: [
+        {
+          system: "phone",
+          value: phone,
+          use: "mobile",
+        },
+        {
+          system: "email",
+          value: email,
+          use: "home",
+        },
+      ],
+      gender: "unknown", // Can be enhanced later
+      birthDate: dateOfBirth,
+      address: address
+        ? [
+            {
+              use: "home",
+              text: address,
+              type: "physical",
+            },
+          ]
+        : [],
+      contact: [
+        {
+          relationship: [
+            {
+              coding: [
+                {
+                  system: "http://terminology.hl7.org/CodeSystem/v2-0131",
+                  code: "EP",
+                  display: "Emergency contact person",
+                },
+              ],
+            },
+          ],
+          name: {
+            text: emergencyContactName,
+          },
+          telecom: [
+            {
+              system: "phone",
+              value: emergencyContactPhone,
+            },
+          ],
+        },
+      ],
+      extension: [
+        ...(bloodType
+          ? [
+              {
+                url: "http://prestack.com/fhir/StructureDefinition/blood-type",
+                valueString: bloodType,
+              },
+            ]
+          : []),
+        ...(insurance
+          ? [
+              {
+                url: "http://prestack.com/fhir/StructureDefinition/insurance",
+                valueString: insurance,
+              },
+            ]
+          : []),
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/high-risk",
+          valueBoolean: isHighRisk,
+        },
+      ],
+    }
+
+    // Create FHIR Patient
+    const createdFhirPatient = await fhirStore.create("Patient", fhirPatient)
+
+    // Create medical history conditions if provided
+    if (medicalHistory) {
+      const historyCondition = {
+        resourceType: "Condition",
+        clinicalStatus: {
+          coding: [
+            {
+              system: "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              code: "active",
+            },
+          ],
+        },
+        verificationStatus: {
+          coding: [
+            {
+              system: "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              code: "confirmed",
+            },
+          ],
+        },
+        category: [
+          {
+            coding: [
+              {
+                system: "http://terminology.hl7.org/CodeSystem/condition-category",
+                code: "problem-list-item",
+                display: "Problem List Item",
+              },
+            ],
+          },
+        ],
+        code: {
+          text: "Medical History",
+        },
+        subject: {
+          reference: `Patient/${createdUser._id}`,
+        },
+        note: [
+          {
+            text: medicalHistory,
+            time: new Date().toISOString(),
+          },
+        ],
+        recordedDate: new Date().toISOString(),
+        recorder: {
+          reference: `Practitioner/${req.user.id}`,
+        },
+      }
+
+      await fhirStore.create("Condition", historyCondition)
+    }
+
+    // Create allergy intolerance if provided
+    if (allergies) {
+      const allergyIntolerance = {
+        resourceType: "AllergyIntolerance",
+        clinicalStatus: {
+          coding: [
+            {
+              system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              code: "active",
+            },
+          ],
+        },
+        verificationStatus: {
+          coding: [
+            {
+              system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              code: "confirmed",
+            },
+          ],
+        },
+        patient: {
+          reference: `Patient/${createdUser._id}`,
+        },
+        code: {
+          text: allergies,
+        },
+        recordedDate: new Date().toISOString(),
+        recorder: {
+          reference: `Practitioner/${req.user.id}`,
+        },
+      }
+
+      await fhirStore.create("AllergyIntolerance", allergyIntolerance)
+    }
+
+    // Create high-risk flag if needed
+    if (isHighRisk) {
+      const highRiskFlag = {
+        resourceType: "Flag",
+        status: "active",
+        category: [
+          {
+            coding: [
+              {
+                system: "http://terminology.hl7.org/CodeSystem/flag-category",
+                code: "clinical",
+                display: "Clinical",
+              },
+            ],
+          },
+        ],
+        code: {
+          coding: [
+            {
+              system: "http://snomed.info/sct",
+              code: "15508007",
+              display: "High risk patient",
+            },
+          ],
+        },
+        subject: {
+          reference: `Patient/${createdUser._id}`,
+        },
+        period: {
+          start: new Date().toISOString(),
+        },
+        author: {
+          reference: `Practitioner/${req.user.id}`,
+        },
+      }
+
+      await fhirStore.create("Flag", highRiskFlag)
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: createdUser._id,
+        firstName,
+        lastName,
+        email,
+        phone,
+        dateOfBirth,
+        isHighRisk,
+        createdAt: createdUser.createdAt,
+      },
+      message: "Patient has been added successfully",
+    })
   } catch (error) {
-    next(error)
+    console.error("Error creating patient:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to create patient",
+      error: error.message,
+    })
   }
 }
-
 // Update a patient
 export const updatePatient = async (req, res, next) => {
   try {
