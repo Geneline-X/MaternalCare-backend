@@ -3,6 +3,7 @@ import { authenticate } from '../middlewares/auth.js'
 import { 
   getAllDoctors, 
   getDoctorById, 
+  getPatients, 
   updateDoctorProfile 
 } from '../controllers/userController.js'
 
@@ -77,5 +78,22 @@ router.put('/doctors/:id', authenticate, async (req, res, next) => {
     });
   }
 }, updateDoctorProfile);
+
+
+/**
+ * @route   GET /api/users/doctors
+ * @desc    Get all doctors
+ * @access  Private - Requires authentication
+ */
+router.get('/patients', authenticate, (req, res, next) => {
+  // Check if user has permission to view doctors
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized - Authentication required'
+    })
+  }
+  next()
+}, getPatients)
 
 export default router

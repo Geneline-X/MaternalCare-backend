@@ -189,3 +189,30 @@ export const getDoctorById = async (req, res) => {
     })
   }
 }
+
+export const getPatients = async (req, res) => {
+    try {
+        const patient = await User.find({
+            role: 'patient'
+        })
+        .select('-__v -createdAt -updatedAt -unsafeMeta -clerkData')
+        .lean()
+
+        if (!patient) {
+            throw new NotFoundError('Patient not found')
+        }
+
+        res.json({
+            success: true,
+            data: patient
+        })
+    } catch (error) {
+        console.error('Error fetching patient:', error)
+        const statusCode = error.statusCode || 500
+        res.status(statusCode).json({
+            success: false,
+            message: error.message || 'Server error while fetching patient',
+            error: error.message
+        })
+    }
+}
