@@ -3,7 +3,7 @@ import cors from "cors"
 import dotenv from "dotenv"
 import path from "path"
 import helmet from "helmet"
-import rateLimit from "express-rate-limit"
+// import rateLimit from "express-rate-limit"
 import connectDB from "./config/database.js"
 import routes from "./routes/index.js"
 import { errorHandler } from "./middlewares/errorHandler.js"
@@ -31,15 +31,15 @@ app.use(
   }),
 )
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: "Too many requests from this IP, please try again later.",
-  },
-})
-app.use(limiter)
+// // Rate limiting
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+//   message: {
+//     error: "Too many requests from this IP, please try again later.",
+//   },
+// })
+// app.use(limiter)
 
 // Body parser middleware
 app.use(express.json({ limit: "10mb" }))
