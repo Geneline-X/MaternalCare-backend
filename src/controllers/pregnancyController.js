@@ -1,36 +1,62 @@
+/**
+ * Enhanced pregnancy controller that matches frontend expectations
+ */
 import { fhirStore } from "../models/FhirStore.js"
 import { sendNotification } from "../services/notificationService.js"
 import User from "../models/User.js"
 
 /**
- * Create a new pregnancy (FHIR EpisodeOfCare)
+ * Create a new pregnancy (FHIR EpisodeOfCare) - FIXED VERSION
  */
 export const createPregnancy = async (req, res, next) => {
   try {
-    const { patientId, estimatedDueDate, lastMenstrualPeriod, gestationalAge, riskLevel = "low", notes } = req.body
+    const {
+      patientId,
+      lastMenstrualPeriod,
+      estimatedDueDate,
+      currentWeek,
+      riskLevel = "low",
+      complications,
+      previousPregnancies,
+      currentSymptoms,
+      bloodPressure,
+      weight,
+      height,
+      prenatalVitamins,
+      smokingStatus,
+      alcoholConsumption,
+      notes,
+    } = req.body
 
     // Validate required fields
     if (!patientId) {
-      return res.status(400).json({ message: "Patient ID is required" })
+      return res.status(400).json({
+        success: false,
+        message: "Patient ID is required",
+      })
     }
 
-    if (!estimatedDueDate && !lastMenstrualPeriod) {
+    if (!estimatedDueDate || !lastMenstrualPeriod) {
       return res.status(400).json({
-        message: "Either estimated due date or last menstrual period is required",
+        success: false,
+        message: "Both estimated due date and last menstrual period are required",
+      })
+    }
+
+    if (!currentWeek || !weight || !height) {
+      return res.status(400).json({
+        success: false,
+        message: "Current week, weight, and height are required",
       })
     }
 
     // Validate patient exists
     const patient = await User.findById(patientId)
     if (!patient) {
-      return res.status(400).json({ message: "Patient not found" })
-    }
-
-    // Calculate EDD if not provided
-    let edd = estimatedDueDate
-    if (!edd && lastMenstrualPeriod) {
-      const lmp = new Date(lastMenstrualPeriod)
-      edd = new Date(lmp.getTime() + 280 * 24 * 60 * 60 * 1000) // Add 280 days
+      return res.status(400).json({
+        success: false,
+        message: "Patient not found",
+      })
     }
 
     // Create FHIR EpisodeOfCare for pregnancy
@@ -59,7 +85,7 @@ export const createPregnancy = async (req, res, next) => {
         : undefined,
       period: {
         start: new Date().toISOString(),
-        end: edd ? new Date(edd).toISOString() : undefined,
+        end: new Date(estimatedDueDate).toISOString(),
       },
       careManager: {
         reference: `Practitioner/${req.user.id}`,
@@ -70,27 +96,82 @@ export const createPregnancy = async (req, res, next) => {
           url: "http://prestack.com/fhir/StructureDefinition/pregnancy-risk-level",
           valueString: riskLevel,
         },
-        ...(gestationalAge
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/gestational-age",
+          valueQuantity: {
+            value: currentWeek,
+            unit: "weeks",
+            system: "http://unitsofmeasure.org",
+            code: "wk",
+          },
+        },
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/last-menstrual-period",
+          valueDate: lastMenstrualPeriod,
+        },
+        // Add new extensions for additional data
+        ...(complications
           ? [
               {
-                url: "http://prestack.com/fhir/StructureDefinition/gestational-age",
-                valueQuantity: {
-                  value: gestationalAge,
-                  unit: "weeks",
-                  system: "http://unitsofmeasure.org",
-                  code: "wk",
-                },
+                url: "http://prestack.com/fhir/StructureDefinition/pregnancy-complications",
+                valueString: complications,
               },
             ]
           : []),
-        ...(lastMenstrualPeriod
+        ...(previousPregnancies
           ? [
               {
-                url: "http://prestack.com/fhir/StructureDefinition/last-menstrual-period",
-                valueDate: lastMenstrualPeriod,
+                url: "http://prestack.com/fhir/StructureDefinition/previous-pregnancies",
+                valueString: previousPregnancies,
               },
             ]
           : []),
+        ...(currentSymptoms
+          ? [
+              {
+                url: "http://prestack.com/fhir/StructureDefinition/current-symptoms",
+                valueString: currentSymptoms,
+              },
+            ]
+          : []),
+        ...(bloodPressure
+          ? [
+              {
+                url: "http://prestack.com/fhir/StructureDefinition/blood-pressure",
+                valueString: bloodPressure,
+              },
+            ]
+          : []),
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/maternal-weight",
+          valueQuantity: {
+            value: weight,
+            unit: "kg",
+            system: "http://unitsofmeasure.org",
+            code: "kg",
+          },
+        },
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/maternal-height",
+          valueQuantity: {
+            value: height,
+            unit: "cm",
+            system: "http://unitsofmeasure.org",
+            code: "cm",
+          },
+        },
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/prenatal-vitamins",
+          valueBoolean: prenatalVitamins,
+        },
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/smoking-status",
+          valueBoolean: smokingStatus,
+        },
+        {
+          url: "http://prestack.com/fhir/StructureDefinition/alcohol-consumption",
+          valueBoolean: alcoholConsumption,
+        },
       ],
     }
 
@@ -167,7 +248,7 @@ export const createPregnancy = async (req, res, next) => {
     try {
       await sendNotification({
         subject: { reference: `Patient/${patientId}` },
-        payload: `🤱 Your pregnancy care has been initiated. Estimated due date: ${new Date(edd).toLocaleDateString()}. We're here to support you throughout your journey!`,
+        payload: `🤱 Your pregnancy care has been initiated. Estimated due date: ${new Date(estimatedDueDate).toLocaleDateString()}. We're here to support you throughout your journey!`,
         recipients: [{ reference: `Patient/${patientId}` }],
         type: "pregnancy_created",
       })
@@ -175,13 +256,28 @@ export const createPregnancy = async (req, res, next) => {
       console.log("Pregnancy notification failed:", notificationError.message)
     }
 
+    // Return response in expected format
     res.status(201).json({
-      pregnancy: createdPregnancy,
-      estimatedDueDate: edd,
-      message: "Pregnancy care initiated successfully",
+      success: true,
+      data: {
+        id: createdPregnancy.id,
+        patientId,
+        lastMenstrualPeriod,
+        estimatedDueDate,
+        currentWeek,
+        riskLevel,
+        status: "active",
+        createdAt: new Date().toISOString(),
+      },
+      message: "Pregnancy record has been created successfully",
     })
   } catch (error) {
-    next(error)
+    console.error("Error creating pregnancy:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to create pregnancy record",
+      error: error.message,
+    })
   }
 }
 
