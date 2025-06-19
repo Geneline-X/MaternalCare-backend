@@ -83,41 +83,76 @@ export const getAppointments = async (req, res, next) => {
 
 export const getAppointment = async (req, res, next) => {
   try {
-    const appointment = await fhirStore.read("Appointment", req.params.id)
+    let appointment = await fhirStore.read("Appointment", req.params.id)
     if (!appointment) {
-      return res.status(404).json({ message: "Appointment not found" })
+      return res.status(404).json({ 
+        resourceType: "OperationOutcome",
+        issue: [{
+          severity: "error",
+          code: "not-found",
+          details: { text: `Appointment with id ${req.params.id} not found` }
+        }]
+      })
     }
 
     // Check if patient can access this appointment
     if (req.user.role === "patient") {
       if (appointment.patientId !== req.user.id) {
         return res.status(403).json({
-          message: "You can only access your own appointments",
-          code: "DATA_OWNERSHIP_VIOLATION",
+          resourceType: "OperationOutcome",
+          issue: [{
+            severity: "error",
+            code: "forbidden",
+            details: { text: "You can only access your own appointments" }
+          }]
         })
       }
     }
 
-    // Populate doctor information
+    // Ensure the response is a proper FHIR resource
+    if (!appointment.resourceType) {
+      appointment = {
+        resourceType: "Appointment",
+        id: appointment.id || appointment._id,
+        status: appointment.status || "booked",
+        ...appointment
+      }
+    }
+
+    // Populate doctor information as an extension
     if (appointment.doctorId) {
       try {
         const doctor = await User.findById(appointment.doctorId).select("firstName lastName email role")
         if (doctor) {
-          appointment.doctorInfo = {
-            id: doctor._id,
-            name: `${doctor.firstName} ${doctor.lastName}`,
-            email: doctor.email,
-            role: doctor.role,
+          if (!appointment.extension) {
+            appointment.extension = [];
           }
+          appointment.extension.push({
+            url: "http://example.org/fhir/StructureDefinition/doctor-info",
+            extension: [
+              { url: "id", valueString: doctor._id.toString() },
+              { url: "name", valueString: `${doctor.firstName} ${doctor.lastName}` },
+              { url: "email", valueString: doctor.email },
+              { url: "role", valueString: doctor.role }
+            ]
+          });
         }
       } catch (error) {
-        console.log(`Could not fetch doctor info for ${appointment.doctorId}:`, error.message)
+        console.error(`Could not fetch doctor info for ${appointment.doctorId}:`, error.message)
       }
     }
 
     res.json(appointment)
   } catch (error) {
-    next(error)
+    console.error("Error in getAppointment:", error);
+    next({
+      resourceType: "OperationOutcome",
+      issue: [{
+        severity: "error",
+        code: "exception",
+        details: { text: error.message }
+      }]
+    })
   }
 }
 

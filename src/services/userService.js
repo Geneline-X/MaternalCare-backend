@@ -29,8 +29,29 @@ class UserService {
     const unsafeMetadata = data.unsafe_metadata || {};
     const imageUrl = data.image_url || data.profile_image_url || '';
     
+    // Extract first and last names from various possible locations
+    let firstName = unsafeMetadata.firstName || data.first_name || '';
+    let lastName = unsafeMetadata.lastName || data.last_name || '';
+    
+    // If names not found, try to split the full name
+    if ((!firstName || !lastName) && data.name) {
+      const nameParts = data.name.trim().split(/\s+/);
+      if (nameParts.length > 1) {
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+      } else {
+        firstName = data.name;
+      }
+    }
+    
     // Log the metadata for debugging
-    console.log('Unsafe Metadata:', JSON.stringify(unsafeMetadata, null, 2));
+    console.log('User data:', {
+      unsafeMetadata: JSON.stringify(unsafeMetadata, null, 2),
+      firstName,
+      lastName,
+      email,
+      imageUrl
+    });
 
     if (!email) {
       console.error('No email found in Clerk user data. Available fields:', Object.keys(clerkUser));
@@ -53,12 +74,10 @@ class UserService {
       const userData = {
         clerkId,
         email,
-        // Only update name if we have the data in this update
-        ...(unsafeMetadata.firstName && unsafeMetadata.lastName && {
-          name: `${unsafeMetadata.firstName} ${unsafeMetadata.lastName}`.trim(),
-          firstName: unsafeMetadata.firstName,
-          lastName: unsafeMetadata.lastName
-        }),
+        name: [firstName, lastName].filter(Boolean).join(' ').trim() || 'Unknown User',
+        firstName,
+        lastName,
+        unsafeMeta: unsafeMetadata,
         // Only update picture if it exists in this update
         ...(imageUrl && { picture: imageUrl }),
         role,
@@ -71,10 +90,14 @@ class UserService {
       // If user exists, preserve existing data for missing fields
       if (user) {
         userData.name = userData.name || user.name;
-        userData.firstName = userData.firstName || user.firstName;
-        userData.lastName = userData.lastName || user.lastName;
+        userData.firstName = userData.firstName || user.firstName || '';
+        userData.lastName = userData.lastName || user.lastName || '';
         userData.picture = userData.picture || user.picture;
         userData.facilityId = userData.facilityId || user.facilityId;
+        // Merge existing unsafeMeta with new data
+        if (user.unsafeMeta) {
+          userData.unsafeMeta = { ...user.unsafeMeta.toObject(), ...userData.unsafeMeta };
+        }
       }
       
       console.log('Processed user data:', JSON.stringify(userData, null, 2));
