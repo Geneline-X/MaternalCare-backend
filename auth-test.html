@@ -1060,7 +1060,7 @@
       activeSession = await Clerk.session;
       const token = await activeSession.getToken();
 
-      userName.textContent = user.fullName || "N/A";
+      userName.textContent = user.unsafeMetadata.firstName+' '+user.unsafeMetadata.lastName || "N/A";
       userEmail.textContent = user.primaryEmailAddress?.emailAddress || "N/A";
       userId.textContent = user.id;
       userRole.textContent = user.publicMetadata?.role || user.unsafeMetadata?.role || "Unknown";

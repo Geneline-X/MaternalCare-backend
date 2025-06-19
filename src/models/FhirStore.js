@@ -209,16 +209,24 @@ class FhirStore {
 
   async delete(resourceType, id) {
     try {
-      const result = await FhirResource.deleteOne({ resourceType, id })
-      if (result.deletedCount === 0) {
-        throw new Error(`Resource not found: ${resourceType}/${id}`)
+      // First verify the resource exists
+      const existing = await FhirResource.findOne({ resourceType, id });
+      if (!existing) {
+        throw new Error(`Resource not found: ${resourceType}/${id}`);
       }
 
-      console.log(`🗑️ Deleted ${resourceType} with ID: ${id} from MongoDB`)
-      return { message: `${resourceType}/${id} deleted successfully` }
+      // Now delete it
+      const result = await FhirResource.deleteOne({ resourceType, id });
+      
+      if (result.deletedCount === 0) {
+        throw new Error(`Failed to delete resource: ${resourceType}/${id}`);
+      }
+
+      console.log(`🗑️ Deleted ${resourceType} with ID: ${id} from MongoDB`);
+      return { message: `${resourceType}/${id} deleted successfully` };
     } catch (error) {
-      console.error(`❌ Error deleting ${resourceType}/${id}:`, error)
-      throw error
+      console.error(`❌ Error deleting ${resourceType}/${id}:`, error);
+      throw error;
     }
   }
 

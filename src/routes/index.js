@@ -1,15 +1,15 @@
 import { Router } from "express"
 import authRoutes from "./authRoute.js"
 import fhirRoutes from "./fhirRoutes.js"
-import { getAllDoctors } from "../controllers/userController.js"
+import userRoutes from "./userRoutes.js"
 
 const router = Router()
 
 /**
- * @route /api/users/doctors
- * @desc Get all doctors
+ * @route /api/users
+ * @desc User-related routes including doctor endpoints
  */
-router.get('/users/doctors', getAllDoctors)
+router.use('/users', userRoutes)
 
 /**
  * @route /api/auth

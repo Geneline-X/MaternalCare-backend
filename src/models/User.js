@@ -18,6 +18,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    firstName: {
+      type: String,
+      required: false,
+    },
+    lastName: {
+      type: String,
+      required: false,
+    },
     picture: {
       type: String,
       default: null,
@@ -30,6 +38,19 @@ const userSchema = new mongoose.Schema(
     facilityId: {
       type: String,
       default: null,
+    },
+    unsafeMeta: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    profession: {
+      type: String,
+      default: ''
+    },
+    experienceYears: {
+      type: Number,
+      default: 0
     },
   },
   {
