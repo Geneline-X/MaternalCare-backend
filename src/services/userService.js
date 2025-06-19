@@ -29,9 +29,12 @@ class UserService {
     const unsafeMetadata = data.unsafe_metadata || {};
     const imageUrl = data.image_url || data.profile_image_url || '';
     
-    // Extract first and last names from various possible locations
-    let firstName = unsafeMetadata.firstName || data.first_name || '';
-    let lastName = unsafeMetadata.lastName || data.last_name || '';
+    // Extract user details from various possible locations
+    let firstName = unsafeMetadata.firstName || data.first_name || data.firstName || '';
+    let lastName = unsafeMetadata.lastName || data.last_name || data.lastName || '';
+    let profession = unsafeMetadata.profession || '';
+    let experienceYears = unsafeMetadata.experienceYears ? 
+      parseInt(unsafeMetadata.experienceYears) : 0;
     
     // If names not found, try to split the full name
     if ((!firstName || !lastName) && data.name) {
@@ -77,12 +80,15 @@ class UserService {
         name: [firstName, lastName].filter(Boolean).join(' ').trim() || 'Unknown User',
         firstName,
         lastName,
-        unsafeMeta: unsafeMetadata,
-        // Extract profession and experienceYears from unsafe_metadata if they exist
-        ...(unsafeMetadata.profession && { profession: unsafeMetadata.profession }),
-        ...(unsafeMetadata.experienceYears && { 
-          experienceYears: Number(unsafeMetadata.experienceYears) || 0 
-        }),
+        profession,
+        experienceYears,
+        unsafeMeta: {
+          ...unsafeMetadata,
+          firstName,
+          lastName,
+          profession,
+          experienceYears: experienceYears.toString()
+        },
         // Only update picture if it exists in this update
         ...(imageUrl && { picture: imageUrl }),
         role,
@@ -143,19 +149,29 @@ class UserService {
         }
       }
 
-      // Update Clerk user metadata with role if not set
-      if (!clerkUser.unsafeMetadata?.role) {
-        try {
-          await clerkClient.users.updateUser(clerkId, {
-            unsafeMetadata: {
-              ...clerkUser.unsafeMetadata,
-              role,
-            },
-          })
-        } catch (clerkError) {
-          console.error(`Failed to update Clerk metadata for user ${clerkId}:`, clerkError)
-          // Don't fail the operation if Clerk update fails
+      // Always sync all metadata back to Clerk
+      try {
+        const clerkUpdate = {
+          firstName,
+          lastName,
+          unsafeMetadata: {
+            ...clerkUser.unsafe_metadata,
+            role,
+            firstName,
+            lastName,
+            profession,
+            experienceYears: experienceYears.toString()
+          }
+        };
+
+        // Only update Clerk if this isn't a Clerk webhook update to avoid loops
+        if (!data.unsafe_metadata) {
+          await clerkClient.users.updateUser(clerkId, clerkUpdate);
+          console.log(`Updated Clerk metadata for user ${clerkId}`);
         }
+      } catch (clerkError) {
+        console.error(`Failed to update Clerk metadata for user ${clerkId}:`, clerkError);
+        // Don't fail the operation if Clerk update fails
       }
 
       return user

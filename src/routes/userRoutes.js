@@ -1,6 +1,10 @@
 import express from 'express'
 import { authenticate } from '../middlewares/auth.js'
-import { getAllDoctors, getDoctorById } from '../controllers/userController.js'
+import { 
+  getAllDoctors, 
+  getDoctorById, 
+  updateDoctorProfile 
+} from '../controllers/userController.js'
 
 const router = express.Router()
 
@@ -25,6 +29,7 @@ router.get('/doctors', authenticate, (req, res, next) => {
  * @desc    Get a single doctor by ID
  * @access  Private - Requires authentication
  */
+// Get doctor by ID
 router.get('/doctors/:id', authenticate, async (req, res, next) => {
   try {
     // Check if user has permission to view doctor details
@@ -51,5 +56,26 @@ router.get('/doctors/:id', authenticate, async (req, res, next) => {
     })
   }
 }, getDoctorById)
+
+// Update doctor profile
+router.put('/doctors/:id', authenticate, async (req, res, next) => {
+  try {
+    // Only allow doctors to update their own profile or admins to update any
+    if (req.auth.role !== 'admin' && req.auth.userId !== req.params.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this profile'
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('Error in doctor update middleware:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while verifying update permissions',
+      error: error.message
+    });
+  }
+}, updateDoctorProfile);
 
 export default router
